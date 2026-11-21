@@ -11,11 +11,13 @@ import {
   ChevronRight,
   UserCircle2,
 } from "lucide-react";
+import { usePortfolio } from "../../context/PortfolioContext";
 import Swal from "sweetalert2";
 
 const PAGE_SIZE = 10;
 
 export default function Comments() {
+  const { accent, cardRadiusClass, buttonRadiusClass } = usePortfolio();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -52,22 +54,38 @@ export default function Comments() {
       .update({ is_pinned: value })
       .eq("id", id);
     fetchComments();
+    Swal.fire({
+      title: value ? "Komentar Disematkan" : "Sematkan Dibatalkan",
+      icon: "success",
+      toast: true,
+      position: "top-end",
+      timer: 1200,
+      showConfirmButton: false,
+    });
   };
 
   const remove = async (id, userName) => {
     Swal.fire({
       title: "Hapus Komentar?",
-      text: `Apakah Anda yakin ingin menghapus catatan dari "${userName}"?`,
+      text: `Apakah Anda yakin ingin menghapus catatan dari "${userName}"? Data akan langsung terhapus dari sistem.`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#ef4444",
       cancelButtonColor: "#71717a",
-      confirmButtonText: "Ya, Hapus",
+      confirmButtonText: "Ya, Hapus Sekarang",
       cancelButtonText: "Batal",
     }).then(async (result) => {
       if (result.isConfirmed) {
         await supabase.from("portfolio_comments").delete().eq("id", id);
         fetchComments();
+        Swal.fire({
+          title: "Komentar Dihapus",
+          icon: "success",
+          toast: true,
+          position: "top-end",
+          timer: 1200,
+          showConfirmButton: false,
+        });
       }
     });
   };
@@ -137,7 +155,7 @@ export default function Comments() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari penulis atau isi komentar..."
-            className="w-full pl-9 pr-8 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none focus:border-emerald-500"
+            className="w-full pl-9 pr-8 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
           />
           {search && (
             <button
@@ -156,7 +174,7 @@ export default function Comments() {
           Memuat komentar dari database...
         </div>
       ) : paginated.length === 0 ? (
-        <div className="p-12 text-center bg-white dark:bg-zinc-900/40 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+        <div className={`p-12 text-center bg-white dark:bg-zinc-900/40 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800`}>
           <MessageSquare className="w-10 h-10 text-zinc-400 mx-auto mb-2 opacity-50" />
           <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Belum ada catatan atau komentar yang sesuai.</p>
         </div>
@@ -165,9 +183,9 @@ export default function Comments() {
           {paginated.map((c) => (
             <div
               key={c.id}
-              className={`p-4 sm:p-5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-start justify-between gap-4 shadow-sm ${
+              className={`p-4 sm:p-5 ${cardRadiusClass} border transition-all flex flex-col sm:flex-row sm:items-start justify-between gap-4 shadow-sm ${
                 c.is_pinned
-                  ? "bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/30"
+                  ? `${accent.bgSubtle} ${accent.border}`
                   : "bg-white dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800"
               }`}
             >
@@ -190,7 +208,7 @@ export default function Comments() {
                       {c.user_name}
                     </h3>
                     {c.is_pinned && (
-                      <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/20">
+                      <span className={`px-2 py-0.5 text-[10px] font-semibold ${accent.bgSubtle} ${accent.text} rounded-full border ${accent.border}`}>
                         Disematkan
                       </span>
                     )}
@@ -209,10 +227,10 @@ export default function Comments() {
               <div className="flex items-center gap-2 self-end sm:self-start shrink-0">
                 <button
                   onClick={() => pin(c.id, !c.is_pinned)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 ${buttonRadiusClass} text-xs font-semibold transition-colors ${
                     c.is_pinned
                       ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                      : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
+                      : `${accent.bgSubtle} ${accent.text} hover:opacity-80`
                   }`}
                 >
                   {c.is_pinned ? (

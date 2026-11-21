@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { supabase } from "../../supabase";
-import { Award, Upload, Trash2, ImageIcon, X, CheckCircle2, Loader2, Plus } from "lucide-react";
+import { Award, Upload, Trash2, ImageIcon, X, CheckCircle2, Loader2, Plus, ShieldCheck } from "lucide-react";
 import { broadcastRealtimeEvent } from "../../utils/realtimeSync";
 import { usePortfolio } from "../../context/PortfolioContext";
+import AdminPagination from "../../components/admin/AdminPagination";
 import Swal from "sweetalert2";
 
 export default function Certificates() {
@@ -13,6 +14,8 @@ export default function Certificates() {
   const [uploadProgress, setUploadProgress] = useState("");
   const [loading, setLoading] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
   const fileInputRef = useRef(null);
 
   const fetchCerts = async () => {
@@ -161,12 +164,12 @@ export default function Certificates() {
   const handleDelete = (id) => {
     Swal.fire({
       title: "Hapus Sertifikat?",
-      text: "Sertifikat ini akan dihapus permanen dari galeri.",
+      text: "Sertifikat ini akan dihapus permanen dari database.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#ef4444",
       cancelButtonColor: "#71717a",
-      confirmButtonText: "Ya, Hapus",
+      confirmButtonText: "Ya, Hapus Sekarang",
       cancelButtonText: "Batal",
     }).then(async (result) => {
       if (result.isConfirmed) {
@@ -174,25 +177,71 @@ export default function Certificates() {
         fetchCerts();
         broadcastRealtimeEvent("CERTS_UPDATED");
         Swal.fire({
-          title: "Sertifikat Dihapus",
+          title: "Sertifikat Berhasil Dihapus",
           icon: "success",
-          confirmButtonColor: accent.hex || "#10b981",
-          timer: 1200,
+          toast: true,
+          position: "top-end",
+          timer: 1500,
           showConfirmButton: false,
         });
       }
     });
   };
 
+  const totalPages = Math.ceil(certs.length / pageSize) || 1;
+  const paginatedCerts = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return certs.slice(start, start + pageSize);
+  }, [certs, currentPage, pageSize]);
+
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-6 max-w-6xl pb-10">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
-          Sertifikat &amp; Kredensial
-        </h1>
-        <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+        <div className="flex items-center gap-2.5">
+          <div className={`p-2 rounded-xl ${accent.bgSubtle} ${accent.text}`}>
+            <Award className="w-5 h-5" />
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+            Sertifikat &amp; Kredensial
+          </h1>
+        </div>
+        <p className="text-xs sm:text-sm text-zinc-500 mt-1">
           Unggah dan kelola sertifikat kursus, pelatihan, dan akreditasi profesional secara massal (Multi-upload &amp; Drag-and-drop).
         </p>
+      </div>
+
+      {/* Metric Banner */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs`}>
+          <div className="flex items-center justify-between text-zinc-500 text-xs">
+            <span>Total Sertifikat</span>
+            <Award className="w-4 h-4 text-zinc-400" />
+          </div>
+          <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+            {certs.length}
+          </p>
+        </div>
+
+        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs`}>
+          <div className="flex items-center justify-between text-zinc-500 text-xs">
+            <span>Multi-Upload</span>
+            <Upload className="w-4 h-4 text-zinc-400" />
+          </div>
+          <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 mt-2">
+            Drag & Drop Aktif
+          </p>
+        </div>
+
+        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs col-span-2 sm:col-span-1`}>
+          <div className="flex items-center justify-between text-zinc-500 text-xs">
+            <span>Sistem Penyimpanan</span>
+            <CheckCircle2 className={`w-4 h-4 ${accent.text}`} />
+          </div>
+          <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Supabase Storage
+          </p>
+        </div>
       </div>
 
       {/* Drag & Drop Multi-Upload Box */}
@@ -341,30 +390,40 @@ export default function Certificates() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {certs.map((c) => (
-            <div
-              key={c.id}
-              className={`group relative overflow-hidden ${cardRadiusClass} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm`}
-            >
-              <div className="aspect-[4/3] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-950">
-                <img
-                  src={c.Img}
-                  alt="Sertifikat"
-                  loading="lazy"
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-              </div>
-
-              <button
-                onClick={() => handleDelete(c.id)}
-                className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600/90 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-sm"
-                title="Hapus Sertifikat"
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {paginatedCerts.map((c) => (
+              <div
+                key={c.id}
+                className={`group relative overflow-hidden ${cardRadiusClass} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xs`}
               >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+                <div className="aspect-[4/3] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-950">
+                  <img
+                    src={c.Img}
+                    alt="Sertifikat"
+                    loading="lazy"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
+
+                <button
+                  onClick={() => handleDelete(c.id)}
+                  className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600/90 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-sm"
+                  title="Hapus Sertifikat (Langsung Otomatis Terhapus)"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <AdminPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={certs.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
       )}
     </div>

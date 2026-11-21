@@ -1,14 +1,21 @@
-import React, { useState } from "react";
-import { Plus, Trash2, Edit2, Save, GraduationCap, Calendar, Download, Upload } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Plus, Trash2, Edit2, GraduationCap, Calendar, Download, Upload, CheckCircle2, Award } from "lucide-react";
 import { usePortfolio } from "../../context/PortfolioContext";
 import { downloadExcelTemplate, parseUploadedSpreadsheet, showImportResultAlert } from "../../utils/csvHelper";
+import AdminModal from "../../components/admin/AdminModal";
+import AdminDataToolbar from "../../components/admin/AdminDataToolbar";
+import AdminPagination from "../../components/admin/AdminPagination";
 import Swal from "sweetalert2";
 
 export default function EducationManager() {
-  const { config, updateConfig, accent } = usePortfolio();
-  const [education, setEducation] = useState(config?.education || []);
+  const { config, updateConfig, accent, cardRadiusClass, buttonRadiusClass } = usePortfolio();
+  const education = config?.education || [];
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState("table");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [editingId, setEditingId] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
 
   const [form, setForm] = useState({
     degree: "",
@@ -49,12 +56,13 @@ export default function EducationManager() {
     });
   };
 
-  const handleSaveItem = (e) => {
+  // Instant Auto-Save on Add / Edit
+  const handleSaveItem = async (e) => {
     e.preventDefault();
-    if (!form.degree || !form.institution) {
+    if (!form.degree?.trim() || !form.institution?.trim()) {
       Swal.fire({
         title: "Kolom Belum Lengkap",
-        text: "Gelar dan Institusi wajib diisi.",
+        text: "Gelar/Jurusan dan Institusi wajib diisi.",
         icon: "warning",
       });
       return;
@@ -73,64 +81,89 @@ export default function EducationManager() {
 
     const periodStr = `${form.startDate} — ${form.isCurrent ? "Sekarang" : form.endDate}`;
 
-    let updated = [];
     const payload = {
       ...form,
       period: periodStr,
     };
 
+    let updated = [];
     if (editingId === "new") {
       const newItem = {
         id: "edu-" + Date.now(),
         ...payload,
       };
-      updated = [...education, newItem];
+      updated = [newItem, ...education];
     } else {
       updated = education.map((s) => (s.id === editingId ? { ...s, ...payload } : s));
     }
 
-    setEducation(updated);
-    setEditingId(null);
+    try {
+      await updateConfig({
+        ...config,
+        education: updated,
+      });
+
+      setEditingId(null);
+
+      Swal.fire({
+        title: "Berhasil Disimpan",
+        text: "Data riwayat pendidikan telah tersimpan otomatis.",
+        icon: "success",
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 1500,
+      });
+    } catch (err) {
+      Swal.fire({
+        title: "Gagal Menyimpan",
+        text: err.message || "Terjadi kesalahan saat menyimpan data.",
+        icon: "error",
+      });
+    }
   };
 
-  const handleDelete = (id) => {
+  // Instant Auto-Save on Delete (Tanpa perlu klik simpan terpisah)
+  const handleDelete = (id, title) => {
     Swal.fire({
       title: "Hapus Riwayat Pendidikan?",
+      text: title ? `Anda yakin ingin menghapus "${title}"? Data akan langsung terhapus dari sistem.` : "Data akan langsung terhapus dari sistem.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#ef4444",
-      confirmButtonText: "Ya, Hapus",
+      cancelButtonColor: "#71717a",
+      confirmButtonText: "Ya, Hapus Sekarang",
       cancelButtonText: "Batal",
-    }).then((res) => {
+    }).then(async (res) => {
       if (res.isConfirmed) {
-        setEducation((prev) => prev.filter((s) => s.id !== id));
+        const filtered = education.filter((s) => s.id !== id);
+        try {
+          await updateConfig({
+            ...config,
+            education: filtered,
+          });
+
+          Swal.fire({
+            title: "Data Dihapus",
+            text: "Riwayat pendidikan berhasil dihapus.",
+            icon: "success",
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 1500,
+          });
+        } catch (err) {
+          Swal.fire({
+            title: "Gagal Menghapus",
+            text: err.message || "Gagal menghapus data dari sistem.",
+            icon: "error",
+          });
+        }
       }
     });
   };
 
-  const handleSaveAll = async () => {
-    setIsSaving(true);
-    try {
-      await updateConfig({
-        ...config,
-        education,
-      });
-
-      Swal.fire({
-        title: "Pendidikan Disimpan!",
-        text: "Daftar latar belakang akademik berhasil disimpan.",
-        icon: "success",
-        confirmButtonColor: "#10b981",
-        timer: 1500,
-        showConfirmButton: false,
-      });
-    } catch (err) {
-      Swal.fire({ title: "Gagal Menyimpan", icon: "error" });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
+  // Excel Templates
   const EDU_TEMPLATE_HEADERS = ["Gelar_Jurusan", "Institusi_Universitas", "Tahun_Mulai", "Tahun_Selesai", "Masih_Studi", "Deskripsi", "Predikat_Nilai"];
   const EDU_SAMPLE_ROWS = [
     {
@@ -216,7 +249,6 @@ export default function EducationManager() {
 
         const period = `${start} — ${isCurrent ? "Sekarang" : end}`;
 
-        // Cek apakah data ini mengupdate data yang sudah ada (berdasarkan No urut atau Gelar+Institusi)
         const existingIdx = (!isNaN(rowNo) && rowNo >= 1 && rowNo <= education.length)
           ? rowNo - 1
           : updatedList.findIndex((item) => item.degree?.toLowerCase() === degree.toLowerCase() && item.institution?.toLowerCase() === institution.toLowerCase());
@@ -248,8 +280,7 @@ export default function EducationManager() {
       });
 
       if (updatedCount > 0 || addedCount > 0) {
-        setEducation(updatedList);
-        updateConfig({
+        await updateConfig({
           ...config,
           education: updatedList,
         });
@@ -272,11 +303,34 @@ export default function EducationManager() {
     }
   };
 
+  // Filtered & Paginated Data
+  const filteredEducation = useMemo(() => {
+    if (!searchTerm.trim()) return education;
+    const q = searchTerm.toLowerCase().trim();
+    return education.filter((edu) =>
+      edu.degree?.toLowerCase().includes(q) ||
+      edu.institution?.toLowerCase().includes(q) ||
+      edu.period?.toLowerCase().includes(q) ||
+      edu.description?.toLowerCase().includes(q) ||
+      edu.grade?.toLowerCase().includes(q)
+    );
+  }, [education, searchTerm]);
+
+  const totalPages = Math.ceil(filteredEducation.length / pageSize) || 1;
+  const paginatedEducation = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredEducation.slice(start, start + pageSize);
+  }, [filteredEducation, currentPage, pageSize]);
+
+  // Quick stats
+  const activeCount = education.filter((e) => e.isCurrent).length;
+
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-6xl pb-10">
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div className={`p-2 rounded-xl ${accent.bgSubtle} ${accent.text}`}>
               <GraduationCap className="w-5 h-5" />
             </div>
@@ -285,65 +339,297 @@ export default function EducationManager() {
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-zinc-500 mt-1">
-            Kelola daftar riwayat studi akademik, tahun kelulusan, dan predikat nilai Anda.
+            Kelola daftar riwayat studi akademik. Setiap penambahan, pengeditan, atau penghapusan data otomatis tersimpan langsung ke sistem.
           </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Download Template Excel */}
-          <button
-            onClick={handleDownloadExcel}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold ${accent.text} hover:opacity-80 transition-all shadow-sm`}
-            title="Unduh format tabel Excel (.xls) ber-header & No"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Template / Data Excel (.xls)</span>
-          </button>
-
-          <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white cursor-pointer transition-all shadow-sm">
-            <Upload className="w-3.5 h-3.5" />
-            <span>Impor Berkas Excel</span>
-            <input
-              type="file"
-              accept=".xls, .xlsx, .csv"
-              onChange={handleSpreadsheetUpload}
-              className="hidden"
-            />
-          </label>
-
-          <button
-            onClick={handleStartAdd}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl ${accent.bg} text-white font-semibold text-xs sm:text-sm hover:opacity-90 transition-all shadow-sm active:scale-95`}
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tambah Pendidikan</span>
-          </button>
-
-          <button
-            onClick={handleSaveAll}
-            disabled={isSaving}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 font-semibold text-xs sm:text-sm hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            <span>{isSaving ? "Menyimpan..." : "Simpan Semua"}</span>
-          </button>
         </div>
       </div>
 
-      {editingId && (
-        <form
-          onSubmit={handleSaveItem}
-          className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 shadow-md space-y-4"
-        >
-          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-            <GraduationCap className={`w-4 h-4 ${accent.text}`} />
-            {editingId === "new" ? "Tambah Riwayat Pendidikan" : "Edit Pendidikan"}
-          </h2>
+      {/* Metric Cards Banner */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs`}>
+          <div className="flex items-center justify-between text-zinc-500 text-xs">
+            <span>Total Pendidikan</span>
+            <GraduationCap className="w-4 h-4 text-zinc-400" />
+          </div>
+          <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+            {education.length}
+          </p>
+        </div>
 
+        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs`}>
+          <div className="flex items-center justify-between text-zinc-500 text-xs">
+            <span>Masih Aktif Studi</span>
+            <Calendar className="w-4 h-4 text-zinc-400" />
+          </div>
+          <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+            {activeCount}
+          </p>
+        </div>
+
+        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs col-span-2 sm:col-span-1`}>
+          <div className="flex items-center justify-between text-zinc-500 text-xs">
+            <span>Sistem Penyimpanan</span>
+            <CheckCircle2 className={`w-4 h-4 ${accent.text}`} />
+          </div>
+          <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Auto-Sync Realtime
+          </p>
+        </div>
+      </div>
+
+      {/* Data Toolbar: Search, Mode Switch, Page Size, Import/Export, Add */}
+      <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs`}>
+        <AdminDataToolbar
+          searchTerm={searchTerm}
+          setSearchTerm={(term) => {
+            setSearchTerm(term);
+            setCurrentPage(1);
+          }}
+          searchPlaceholder="Cari gelar, jurusan, institusi, atau tahun..."
+          totalCount={education.length}
+          filteredCount={filteredEducation.length}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          onAddNew={handleStartAdd}
+          addLabel="Tambah Pendidikan"
+          onDownloadExcel={handleDownloadExcel}
+          onUploadExcel={handleSpreadsheetUpload}
+          pageSize={pageSize}
+          setPageSize={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+        />
+      </div>
+
+      {/* Main Data Presentation */}
+      {filteredEducation.length === 0 ? (
+        <div className={`p-12 text-center bg-white dark:bg-zinc-900/40 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 space-y-3`}>
+          <GraduationCap className="w-12 h-12 text-zinc-400 mx-auto opacity-30" />
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+            {searchTerm ? "Tidak ada hasil pencarian" : "Belum Ada Riwayat Pendidikan"}
+          </h3>
+          <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+            {searchTerm
+              ? `Tidak ditemukan data pendidikan yang cocok dengan kata kunci "${searchTerm}".`
+              : "Tambahkan riwayat akademik baru atau unggah berkas template Excel untuk memulai."}
+          </p>
+          {searchTerm ? (
+            <button
+              onClick={() => setSearchTerm("")}
+              className={`px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white`}
+            >
+              Reset Filter
+            </button>
+          ) : (
+            <button
+              onClick={handleStartAdd}
+              className={`inline-flex items-center gap-1.5 px-4 py-2 ${buttonRadiusClass} ${accent.bg} text-white text-xs font-semibold hover:opacity-90 transition-all`}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tambah Pendidikan Pertama</span>
+            </button>
+          )}
+        </div>
+      ) : viewMode === "table" ? (
+        /* TABLE VIEW (Optimal for large datasets) */
+        <div className={`bg-white dark:bg-zinc-900/70 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xs`}>
+          <div className="overflow-x-auto scrollbar-thin">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/75 dark:bg-zinc-950/50 text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-wider text-[10px]">
+                  <th className="py-3 px-3.5 w-12 text-center">No</th>
+                  <th className="py-3 px-4 min-w-[200px]">Gelar & Jurusan</th>
+                  <th className="py-3 px-4 min-w-[200px]">Institusi / Kampus</th>
+                  <th className="py-3 px-3.5 min-w-[130px]">Periode Studi</th>
+                  <th className="py-3 px-3.5 min-w-[150px]">Predikat / Nilai</th>
+                  <th className="py-3 px-4 text-right min-w-[100px]">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                {paginatedEducation.map((edu, idx) => {
+                  const globalIdx = (currentPage - 1) * pageSize + idx + 1;
+                  return (
+                    <tr
+                      key={edu.id || idx}
+                      className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors group"
+                    >
+                      <td className="py-3 px-3.5 text-center font-mono text-zinc-400">
+                        {globalIdx}
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100">
+                        <div className="truncate max-w-[240px] font-medium" title={edu.degree}>
+                          {edu.degree}
+                        </div>
+                        {edu.description && (
+                          <div className="text-[11px] text-zinc-400 truncate max-w-[260px] font-normal">
+                            {edu.description}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-zinc-600 dark:text-zinc-300">
+                        <div className="truncate max-w-[220px]" title={edu.institution}>
+                          {edu.institution}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3.5 font-mono text-zinc-500 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] ${
+                          edu.isCurrent
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                            : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                        }`}>
+                          {edu.period}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3.5">
+                        {edu.grade ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md">
+                            <Award className="w-3 h-3" />
+                            <span className="truncate max-w-[140px]">{edu.grade}</span>
+                          </span>
+                        ) : (
+                          <span className="text-zinc-400 text-[11px]">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEdit(edu)}
+                            className="p-1.5 rounded-lg text-zinc-500 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            title="Edit Data"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(edu.id, edu.degree)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                            title="Hapus Data (Langsung Otomatis Terhapus)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="p-4 border-t border-zinc-100 dark:border-zinc-800/80">
+            <AdminPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredEducation.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        </div>
+      ) : (
+        /* GRID VIEW */
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {paginatedEducation.map((edu) => (
+              <div
+                key={edu.id}
+                className={`p-5 ${cardRadiusClass} bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-3 flex flex-col justify-between hover:border-zinc-300 dark:hover:border-zinc-700 transition-all`}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate" title={edu.degree}>
+                        {edu.degree}
+                      </h3>
+                      <p className="text-xs text-zinc-500 mt-0.5 truncate" title={edu.institution}>
+                        {edu.institution}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleStartEdit(edu)}
+                        className="p-1.5 rounded-lg text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(edu.id, edu.degree)}
+                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                        title="Hapus"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                      {edu.period}
+                    </span>
+                    {edu.grade && (
+                      <span className="text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md">
+                        {edu.grade}
+                      </span>
+                    )}
+                  </div>
+
+                  {edu.description && (
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed line-clamp-3">
+                      {edu.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <AdminPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredEducation.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      )}
+
+      {/* POPUP MODAL FORM FOR ADD / EDIT (Does not push content down) */}
+      <AdminModal
+        isOpen={Boolean(editingId)}
+        onClose={() => setEditingId(null)}
+        title={editingId === "new" ? "Tambah Riwayat Pendidikan" : "Edit Riwayat Pendidikan"}
+        subtitle="Data akan langsung tersimpan secara otomatis setelah Anda mengklik simpan."
+        icon={GraduationCap}
+        maxWidth="max-w-2xl"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setEditingId(null)}
+              className={`px-4 py-2 ${buttonRadiusClass} text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors`}
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              form="eduForm"
+              className={`px-5 py-2 ${buttonRadiusClass} ${accent.bg} text-white text-xs font-semibold hover:opacity-90 transition-all shadow-sm active:scale-95`}
+            >
+              Simpan Data
+            </button>
+          </>
+        }
+      >
+        <form id="eduForm" onSubmit={handleSaveItem} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                Gelar / Jurusan <span className="text-rose-500">*</span>
+                Gelar / Jurusan Studi <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -351,11 +637,11 @@ export default function EducationManager() {
                 onChange={(e) => setForm({ ...form, degree: e.target.value })}
                 placeholder="cth. S1 Teknik Informatika"
                 required
-                className="w-full px-3 py-2 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:outline-none"
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                 Nama Institusi / Universitas <span className="text-rose-500">*</span>
               </label>
@@ -363,14 +649,14 @@ export default function EducationManager() {
                 type="text"
                 value={form.institution}
                 onChange={(e) => setForm({ ...form, institution: e.target.value })}
-                placeholder="cth. Institut Teknologi..."
+                placeholder="cth. Institut Teknologi Sepuluh Nopember"
                 required
-                className="w-full px-3 py-2 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:outline-none"
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
               />
             </div>
           </div>
 
-          {/* PERIODE TAHUN & CHECKBOX SEDANG STUDI */}
+          {/* PERIODE TAHUN */}
           <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 space-y-3">
             <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-zinc-400" />
@@ -389,13 +675,13 @@ export default function EducationManager() {
                   value={form.startDate}
                   onChange={(e) => setForm({ ...form, startDate: e.target.value })}
                   required
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 focus:outline-none"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none"
                 />
               </div>
 
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
-                  Tahun Selesai / Lulus
+                  Tahun Selesai / Kelulusan
                 </label>
                 <input
                   type="number"
@@ -404,7 +690,7 @@ export default function EducationManager() {
                   value={form.endDate}
                   disabled={form.isCurrent}
                   onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 focus:outline-none disabled:opacity-40"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none disabled:opacity-40"
                 />
               </div>
             </div>
@@ -412,103 +698,44 @@ export default function EducationManager() {
             <div className="flex items-center gap-2 pt-1">
               <input
                 type="checkbox"
-                id="eduIsCurrent"
+                id="eduIsCurrentModal"
                 checked={form.isCurrent}
                 onChange={(e) => setForm({ ...form, isCurrent: e.target.checked })}
-                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                className="w-4 h-4 rounded text-zinc-900 dark:text-zinc-100 focus:ring-0 cursor-pointer"
               />
-              <label htmlFor="eduIsCurrent" className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 cursor-pointer">
-                Masih aktif menempuh pendidikan (Status: "Sekarang")
+              <label htmlFor="eduIsCurrentModal" className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 cursor-pointer">
+                Masih aktif menempuh studi saat ini (Status: "Sekarang")
               </label>
             </div>
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-              Predikat Nilai / Penghargaan (Opsional)
+              Predikat Nilai / Prestasi (Opsional)
             </label>
             <input
               type="text"
               value={form.grade}
               onChange={(e) => setForm({ ...form, grade: e.target.value })}
-              placeholder="cth. IPK 3.8 / 4.0 atau Predikat Memuaskan"
-              className="w-full px-3 py-2 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:outline-none"
+              placeholder="cth. IPK 3.85 / 4.00 (Cumlaude)"
+              className="w-full px-3.5 py-2 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none"
             />
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-              Deskripsi Pembelajaran & Skripsi
+              Deskripsi Mata Kuliah / Skripsi / Catatan Tambahan
             </label>
             <textarea
               rows={3}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Fokus studi, mata kuliah inti, atau proyek tugas akhir..."
-              className="w-full px-3 py-2 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:outline-none resize-none"
-            ></textarea>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setEditingId(null)}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-900 dark:bg-white text-white dark:text-zinc-950"
-            >
-              Terapkan
-            </button>
+              placeholder="Fokus keahlian, tugas akhir atau kegiatan organisasi penting..."
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none resize-none"
+            />
           </div>
         </form>
-      )}
-
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {education.map((edu) => (
-          <div
-            key={edu.id}
-            className="p-5 rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 shadow-sm space-y-3"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  {edu.degree}
-                </h3>
-                <p className="text-xs text-zinc-500">{edu.institution} • {edu.period}</p>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handleStartEdit(edu)}
-                  className="p-1 rounded-md text-zinc-400 hover:text-black dark:hover:text-white"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => handleDelete(edu.id)}
-                  className="p-1 rounded-md text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              {edu.description}
-            </p>
-
-            {edu.grade && (
-              <span className="inline-block text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                {edu.grade}
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
+      </AdminModal>
     </div>
   );
 }

@@ -171,14 +171,6 @@ export const parseCsvText = (text) => {
     });
     if (!hasAnyData) continue;
 
-
-    // Abaikan baris yang seluruh kolom datanya kosong
-    const hasAnyData = Object.entries(obj).some(([k, v]) => {
-      if (k === "_rowNumber" || k.toLowerCase() === "no") return false;
-      return v !== null && v !== undefined && String(v).trim() !== "";
-    });
-    if (!hasAnyData) continue;
-
     data.push(obj);
   }
 
@@ -234,12 +226,6 @@ export const parseUploadedSpreadsheet = async (file) => {
         return;
       }
 
-      // Abaikan baris tersembunyi (cth. helper supportMisalignedColumns dari WPS Office/Excel)
-      const styleAttr = tr.getAttribute("style") || "";
-      if (tr.style?.display === "none" || styleAttr.replace(/\s+/g, "").includes("display:none")) {
-        return;
-      }
-
       const tds = tr.querySelectorAll("td, th");
       if (tds.length === 0) return;
       const obj = { _rowNumber: rIdx + 1 };
@@ -255,14 +241,6 @@ export const parseUploadedSpreadsheet = async (file) => {
           return val === h.toLowerCase() || val === "";
         });
       if (isHeaderDuplicate) return;
-
-      // Abaikan baris kosong yang tidak memiliki data riil di luar kolom No / rowNumber
-      const hasAnyData = Object.entries(obj).some(([k, v]) => {
-        if (k === "_rowNumber" || k.toLowerCase() === "no") return false;
-        return v !== null && v !== undefined && String(v).trim() !== "";
-      });
-      if (!hasAnyData) return;
-
 
       // Abaikan baris kosong yang tidak memiliki data riil di luar kolom No / rowNumber
       const hasAnyData = Object.entries(obj).some(([k, v]) => {

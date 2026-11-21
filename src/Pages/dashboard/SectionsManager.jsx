@@ -9,22 +9,52 @@ export default function SectionsManager() {
   const [elements, setElements] = useState(config?.elements || {});
   const [isSaving, setIsSaving] = useState(false);
 
-  const toggleSection = (key) => {
-    setSections((prev) => ({
-      ...prev,
-      [key]: prev[key] === false ? true : false,
-    }));
+  const toggleSection = async (key) => {
+    const nextVal = sections[key] === false ? true : false;
+    const newSections = {
+      ...sections,
+      [key]: nextVal,
+    };
+    setSections(newSections);
+    await updateConfig({
+      ...config,
+      sections: newSections,
+      elements,
+    });
+    Swal.fire({
+      title: nextVal ? "Section Ditampilkan" : "Section Disembunyikan",
+      icon: "success",
+      toast: true,
+      position: "top-end",
+      timer: 1000,
+      showConfirmButton: false,
+    });
   };
 
-  const toggleElement = (key) => {
-    setElements((prev) => ({
-      ...prev,
-      [key]: prev[key] === false ? true : false,
-    }));
+  const toggleElement = async (key) => {
+    const nextVal = elements[key] === false ? true : false;
+    const newElements = {
+      ...elements,
+      [key]: nextVal,
+    };
+    setElements(newElements);
+    await updateConfig({
+      ...config,
+      sections,
+      elements: newElements,
+    });
+    Swal.fire({
+      title: nextVal ? "Elemen Ditampilkan" : "Elemen Disembunyikan",
+      icon: "success",
+      toast: true,
+      position: "top-end",
+      timer: 1000,
+      showConfirmButton: false,
+    });
   };
 
   const handleSave = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setIsSaving(true);
     try {
       await updateConfig({
@@ -37,8 +67,9 @@ export default function SectionsManager() {
         title: "Visibilitas Diperbarui!",
         text: "Pengaturan tampilan section dan elemen website berhasil disimpan.",
         icon: "success",
-        confirmButtonColor: "#10b981",
-        timer: 1800,
+        toast: true,
+        position: "top-end",
+        timer: 1500,
         showConfirmButton: false,
       });
     } catch (err) {

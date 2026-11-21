@@ -155,7 +155,8 @@ export default function Appearance() {
       title: "Gaya Diperbarui!",
       text: `${label} berhasil diubah dan diterapkan langsung ke tampilan.`,
       icon: "success",
-      confirmButtonColor: "#10b981",
+      toast: true,
+      position: "top-end",
       timer: 1200,
       showConfirmButton: false,
     });

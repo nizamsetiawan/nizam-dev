@@ -1,14 +1,22 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { usePortfolio } from "../../context/PortfolioContext";
-import { Plus, Trash2, Pencil, Check, X, Zap, Download, Upload } from "lucide-react";
+import { Plus, Trash2, Edit2, Zap, Download, Upload, CheckCircle2 } from "lucide-react";
 import { downloadExcelTemplate, parseUploadedSpreadsheet, showImportResultAlert } from "../../utils/csvHelper";
+import AdminModal from "../../components/admin/AdminModal";
+import AdminDataToolbar from "../../components/admin/AdminDataToolbar";
+import AdminPagination from "../../components/admin/AdminPagination";
 import Swal from "sweetalert2";
 
 export default function SkillsManager() {
-  const { config, updateConfig, accent } = usePortfolio();
+  const { config, updateConfig, accent, cardRadiusClass, buttonRadiusClass } = usePortfolio();
   const categories = config?.skillsCategories || [];
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState("table");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [editingId, setEditingId] = useState(null);
+
   const [formData, setFormData] = useState({
     category: "",
     description: "",
@@ -29,14 +37,15 @@ export default function SkillsManager() {
     setFormData({
       category: cat.category || "",
       description: cat.description || "",
-      skillsInput: (cat.skills || []).join(", "),
+      skillsInput: Array.isArray(cat.skills) ? cat.skills.join(", ") : (cat.skills || ""),
     });
   };
 
-  const handleSave = (e) => {
+  // Instant Auto-Save on Add / Edit
+  const handleSave = async (e) => {
     e.preventDefault();
 
-    if (!formData.category) {
+    if (!formData.category?.trim()) {
       Swal.fire({
         title: "Kolom Belum Lengkap",
         text: "Nama Kategori Keahlian wajib diisi.",
@@ -51,65 +60,91 @@ export default function SkillsManager() {
       .filter(Boolean);
 
     let updatedList = [];
+    const payload = {
+      category: formData.category.trim(),
+      description: formData.description.trim(),
+      skills,
+    };
 
     if (editingId === "new") {
       const newEntry = {
         id: `cat-${Date.now()}`,
-        category: formData.category,
-        description: formData.description,
-        skills,
+        ...payload,
       };
-      updatedList = [...categories, newEntry];
+      updatedList = [newEntry, ...categories];
     } else {
       updatedList = categories.map((item) =>
-        item.id === editingId
-          ? {
-              ...item,
-              category: formData.category,
-              description: formData.description,
-              skills,
-            }
-          : item
+        item.id === editingId ? { ...item, ...payload } : item
       );
     }
 
-    updateConfig({
-      ...config,
-      skillsCategories: updatedList,
-    });
+    try {
+      await updateConfig({
+        ...config,
+        skillsCategories: updatedList,
+      });
 
-    setEditingId(null);
+      setEditingId(null);
 
-    Swal.fire({
-      title: "Kategori Keahlian Disimpan!",
-      text: "Daftar kompetensi telah diperbarui.",
-      icon: "success",
-      confirmButtonColor: "#10b981",
-      timer: 1500,
-      showConfirmButton: false,
-    });
+      Swal.fire({
+        title: "Berhasil Disimpan",
+        text: "Kategori keahlian tersimpan otomatis.",
+        icon: "success",
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 1500,
+      });
+    } catch (err) {
+      Swal.fire({
+        title: "Gagal Menyimpan",
+        text: err.message || "Terjadi kesalahan saat menyimpan data.",
+        icon: "error",
+      });
+    }
   };
 
+  // Instant Auto-Save on Delete (Tanpa perlu klik simpan terpisah)
   const handleDelete = (id, category) => {
     Swal.fire({
       title: "Hapus Kategori Keahlian?",
-      text: `Yakin ingin menghapus kategori "${category}" beserta seluruh tag teknologinya?`,
+      text: category ? `Yakin ingin menghapus kategori "${category}" beserta seluruh tag teknologinya? Data akan langsung terhapus.` : "Data akan langsung terhapus.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#ef4444",
-      confirmButtonText: "Ya, Hapus",
+      cancelButtonColor: "#71717a",
+      confirmButtonText: "Ya, Hapus Sekarang",
       cancelButtonText: "Batal",
-    }).then((res) => {
+    }).then(async (res) => {
       if (res.isConfirmed) {
         const filtered = categories.filter((item) => item.id !== id);
-        updateConfig({
-          ...config,
-          skillsCategories: filtered,
-        });
+        try {
+          await updateConfig({
+            ...config,
+            skillsCategories: filtered,
+          });
+
+          Swal.fire({
+            title: "Data Dihapus",
+            text: "Kategori keahlian berhasil dihapus.",
+            icon: "success",
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 1500,
+          });
+        } catch (err) {
+          Swal.fire({
+            title: "Gagal Menghapus",
+            text: err.message || "Gagal menghapus data dari sistem.",
+            icon: "error",
+          });
+        }
       }
     });
   };
 
+  // Excel Templates & Live Data Export
   const SKILLS_TEMPLATE_HEADERS = ["Nama_Kategori", "Deskripsi_Kategori", "Daftar_Keahlian"];
   const SKILLS_SAMPLE_ROWS = [
     {
@@ -147,8 +182,8 @@ export default function SkillsManager() {
       if (!parsed.data || parsed.data.length === 0) {
         showImportResultAlert({
           successCount: 0,
-          errors: [{ row: 1, reason: "Berkas kosong atau tidak memiliki baris data." }],
-          entityName: "Kategori Keahlian",
+          errors: [{ row: 1, reason: "Berkas kosong atau tidak ada data yang ditemukan." }],
+          entityName: "Keahlian",
         });
         return;
       }
@@ -171,9 +206,7 @@ export default function SkillsManager() {
           return;
         }
 
-        const skills = skillsRaw
-          ? String(skillsRaw).split(/[,|;]/).map((s) => s.trim()).filter(Boolean)
-          : [];
+        const skills = skillsRaw ? String(skillsRaw).split(/[,|;]/).map((s) => s.trim()).filter(Boolean) : [];
 
         const existingIdx = (!isNaN(rowNo) && rowNo >= 1 && rowNo <= categories.length)
           ? rowNo - 1
@@ -201,7 +234,7 @@ export default function SkillsManager() {
       });
 
       if (updatedCount > 0 || addedCount > 0) {
-        updateConfig({
+        await updateConfig({
           ...config,
           skillsCategories: updatedList,
         });
@@ -211,12 +244,12 @@ export default function SkillsManager() {
         addedCount,
         updatedCount,
         errors,
-        entityName: "Kategori Keahlian",
+        entityName: "Keahlian",
       });
     } catch (err) {
       Swal.fire({
-        title: "Gagal Mengimpor Berkas",
-        text: err.message,
+        title: "Format Berkas Tidak Valid",
+        text: "Terjadi kesalahan saat membaca file: " + err.message,
         icon: "error",
       });
     } finally {
@@ -224,198 +257,367 @@ export default function SkillsManager() {
     }
   };
 
+  // Filter & Pagination
+  const filteredCategories = useMemo(() => {
+    if (!searchTerm.trim()) return categories;
+    const q = searchTerm.toLowerCase().trim();
+    return categories.filter((cat) =>
+      cat.category?.toLowerCase().includes(q) ||
+      cat.description?.toLowerCase().includes(q) ||
+      (Array.isArray(cat.skills) && cat.skills.some((s) => s.toLowerCase().includes(q)))
+    );
+  }, [categories, searchTerm]);
+
+  const totalPages = Math.ceil(filteredCategories.length / pageSize) || 1;
+  const paginatedCategories = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredCategories.slice(start, start + pageSize);
+  }, [filteredCategories, currentPage, pageSize]);
+
+  // Quick stats
+  const totalSkillsCount = categories.reduce((acc, cat) => acc + (cat.skills?.length || 0), 0);
+
   return (
-    <div className="space-y-6 max-w-5xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 max-w-6xl pb-10">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div className={`p-2 rounded-xl ${accent.bgSubtle} ${accent.text}`}>
               <Zap className="w-5 h-5" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-              Matriks Keahlian & Spesialisasi
+              Matriks Kompetensi & Keahlian
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-zinc-500 mt-1">
-            Kelola rumpun keahlian teknis, bahasa pemrograman, framework, dan peralatan kerja.
+            Kelola bidang keahlian teknis dan daftar teknologi. Data langsung tersimpan otomatis ke sistem.
           </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Download Template Excel */}
-          <button
-            onClick={handleDownloadExcel}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold ${accent.text} hover:opacity-80 transition-all shadow-sm`}
-            title="Unduh format tabel Excel (.xls) ber-header & No"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Template / Data Excel (.xls)</span>
-          </button>
-
-          <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white cursor-pointer transition-all shadow-sm">
-            <Upload className="w-3.5 h-3.5" />
-            <span>Impor Berkas Excel</span>
-            <input
-              type="file"
-              accept=".xls, .xlsx, .csv"
-              onChange={handleSpreadsheetUpload}
-              className="hidden"
-            />
-          </label>
-
-          <button
-            onClick={handleOpenAdd}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl ${accent.bg} text-white font-semibold text-xs sm:text-sm hover:opacity-90 transition-all shadow-sm active:scale-95`}
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tambah Kategori</span>
-          </button>
         </div>
       </div>
 
-      {/* Editor Modal */}
-      {editingId && (
-        <form
-          onSubmit={handleSave}
-          className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 shadow-xl space-y-4 animate-in fade-in duration-200"
-        >
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
-            <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <Zap className={`w-4 h-4 ${accent.text}`} />
-              {editingId === "new" ? "Tambah Kategori Keahlian Baru" : "Edit Kategori Keahlian"}
-            </h2>
+      {/* Metric Cards Banner */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs`}>
+          <div className="flex items-center justify-between text-zinc-500 text-xs">
+            <span>Total Kategori</span>
+            <Zap className="w-4 h-4 text-zinc-400" />
+          </div>
+          <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+            {categories.length}
+          </p>
+        </div>
+
+        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs`}>
+          <div className="flex items-center justify-between text-zinc-500 text-xs">
+            <span>Total Tag Keahlian</span>
+            <CheckCircle2 className="w-4 h-4 text-zinc-400" />
+          </div>
+          <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+            {totalSkillsCount}
+          </p>
+        </div>
+
+        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs col-span-2 sm:col-span-1`}>
+          <div className="flex items-center justify-between text-zinc-500 text-xs">
+            <span>Sistem Penyimpanan</span>
+            <CheckCircle2 className={`w-4 h-4 ${accent.text}`} />
+          </div>
+          <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Auto-Sync Realtime
+          </p>
+        </div>
+      </div>
+
+      {/* Data Toolbar */}
+      <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs`}>
+        <AdminDataToolbar
+          searchTerm={searchTerm}
+          setSearchTerm={(term) => {
+            setSearchTerm(term);
+            setCurrentPage(1);
+          }}
+          searchPlaceholder="Cari nama kategori, keahlian, atau deskripsi..."
+          totalCount={categories.length}
+          filteredCount={filteredCategories.length}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          onAddNew={handleOpenAdd}
+          addLabel="Tambah Kategori"
+          onDownloadExcel={handleDownloadExcel}
+          onUploadExcel={handleSpreadsheetUpload}
+          pageSize={pageSize}
+          setPageSize={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+        />
+      </div>
+
+      {/* Main Data Presentation */}
+      {filteredCategories.length === 0 ? (
+        <div className={`p-12 text-center bg-white dark:bg-zinc-900/40 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 space-y-3`}>
+          <Zap className="w-12 h-12 text-zinc-400 mx-auto opacity-30" />
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+            {searchTerm ? "Tidak ada hasil pencarian" : "Belum Ada Kategori Keahlian"}
+          </h3>
+          <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+            {searchTerm
+              ? `Tidak ditemukan kategori yang cocok dengan kata kunci "${searchTerm}".`
+              : "Kelompokkan keahlian Anda ke dalam beberapa kategori seperti Frontend, Backend, Tools, dll."}
+          </p>
+          {searchTerm ? (
             <button
-              type="button"
-              onClick={() => setEditingId(null)}
-              className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-white"
+              onClick={() => setSearchTerm("")}
+              className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
             >
-              <X className="w-4 h-4" />
+              Reset Filter
             </button>
+          ) : (
+            <button
+              onClick={handleOpenAdd}
+              className={`inline-flex items-center gap-1.5 px-4 py-2 ${buttonRadiusClass} ${accent.bg} text-white text-xs font-semibold hover:opacity-90 transition-all`}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tambah Kategori Pertama</span>
+            </button>
+          )}
+        </div>
+      ) : viewMode === "table" ? (
+        /* TABLE VIEW */
+        <div className={`bg-white dark:bg-zinc-900/70 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xs`}>
+          <div className="overflow-x-auto scrollbar-thin">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/75 dark:bg-zinc-950/50 text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-wider text-[10px]">
+                  <th className="py-3 px-3.5 w-12 text-center">No</th>
+                  <th className="py-3 px-4 min-w-[180px]">Kategori</th>
+                  <th className="py-3 px-4 min-w-[220px]">Deskripsi</th>
+                  <th className="py-3 px-3.5 min-w-[90px] text-center">Jumlah</th>
+                  <th className="py-3 px-4 min-w-[260px]">Daftar Tag Keahlian</th>
+                  <th className="py-3 px-4 text-right min-w-[100px]">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                {paginatedCategories.map((cat, idx) => {
+                  const globalIdx = (currentPage - 1) * pageSize + idx + 1;
+                  return (
+                    <tr
+                      key={cat.id || idx}
+                      className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors group"
+                    >
+                      <td className="py-3 px-3.5 text-center font-mono text-zinc-400">
+                        {globalIdx}
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100">
+                        <div className="truncate max-w-[180px]" title={cat.category}>
+                          {cat.category}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-zinc-500">
+                        <div className="truncate max-w-[240px]" title={cat.description}>
+                          {cat.description || "—"}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3.5 text-center font-mono">
+                        <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold text-[11px]">
+                          {cat.skills?.length || 0}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {cat.skills && cat.skills.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 max-w-[280px]">
+                            {cat.skills.slice(0, 4).map((s, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="px-1.5 py-0.5 rounded text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-mono"
+                              >
+                                {s}
+                              </span>
+                            ))}
+                            {cat.skills.length > 4 && (
+                              <span className="text-[10px] text-zinc-400 font-mono">
+                                +{cat.skills.length - 4}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-zinc-400 text-[11px]">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(cat)}
+                            className="p-1.5 rounded-lg text-zinc-500 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            title="Edit Data"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(cat.id, cat.category)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                            title="Hapus Data (Langsung Otomatis Terhapus)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                Nama Kategori <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder="cth. Rekayasa Frontend"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
-              />
-            </div>
+          <div className="p-4 border-t border-zinc-100 dark:border-zinc-800/80">
+            <AdminPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredCategories.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        </div>
+      ) : (
+        /* GRID VIEW */
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {paginatedCategories.map((cat) => (
+              <div
+                key={cat.id}
+                className={`p-5 ${cardRadiusClass} bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-3 flex flex-col justify-between hover:border-zinc-300 dark:hover:border-zinc-700 transition-all`}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                        {cat.category}
+                      </h3>
+                      {cat.description && (
+                        <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">
+                          {cat.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEdit(cat)}
+                        className="p-1.5 rounded-lg text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(cat.id, cat.category)}
+                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                        title="Hapus"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                Deskripsi Singkat Kategori
-              </label>
-              <input
-                type="text"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="cth. Teknologi utama untuk membangun antarmuka pengguna responsif."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                Daftar Tag Keahlian (Pisahkan dengan tanda koma)
-              </label>
-              <input
-                type="text"
-                value={formData.skillsInput}
-                onChange={(e) => setFormData({ ...formData, skillsInput: e.target.value })}
-                placeholder="cth. React.js, TypeScript, Tailwind CSS, Vite"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
-              />
-            </div>
+                  {cat.skills && cat.skills.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-2">
+                      {cat.skills.map((s, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2.5 py-1 text-xs rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200/60 dark:border-zinc-700/60"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+          <AdminPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredCategories.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      )}
+
+      {/* POPUP MODAL FORM FOR ADD / EDIT */}
+      <AdminModal
+        isOpen={Boolean(editingId)}
+        onClose={() => setEditingId(null)}
+        title={editingId === "new" ? "Tambah Kategori Keahlian Baru" : "Edit Kategori Keahlian"}
+        subtitle="Data akan langsung tersimpan secara otomatis setelah Anda mengklik simpan."
+        icon={Zap}
+        maxWidth="max-w-lg"
+        footer={
+          <>
             <button
               type="button"
               onClick={() => setEditingId(null)}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              className={`px-4 py-2 ${buttonRadiusClass} text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors`}
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl text-xs font-semibold bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 shadow-sm"
+              form="catForm"
+              className={`px-5 py-2 ${buttonRadiusClass} ${accent.bg} text-white text-xs font-semibold hover:opacity-90 transition-all shadow-sm active:scale-95`}
             >
               Simpan Kategori
             </button>
+          </>
+        }
+      >
+        <form id="catForm" onSubmit={handleSave} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+              Nama Kategori <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              placeholder="cth. Rekayasa Frontend, Cloud & DevOps, dll"
+              required
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+              Deskripsi Singkat Bidang Keahlian
+            </label>
+            <input
+              type="text"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="cth. Spesialisasi antarmuka performa tinggi dan rekayasa komponen"
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+              Daftar Tag Keahlian (pisahkan dengan koma atau titik koma)
+            </label>
+            <textarea
+              rows={4}
+              value={formData.skillsInput}
+              onChange={(e) => setFormData({ ...formData, skillsInput: e.target.value })}
+              placeholder="React, Next.js, TypeScript, Tailwind CSS, Vite, Redux..."
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none resize-none"
+            />
           </div>
         </form>
-      )}
-
-      {/* Grid of Categories */}
-      {categories.length === 0 ? (
-        <div className="p-12 text-center bg-white dark:bg-zinc-900/40 rounded-2xl border border-zinc-200 dark:border-zinc-800 space-y-3">
-          <Zap className="w-10 h-10 text-zinc-400 mx-auto opacity-40" />
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-            Belum Ada Kategori Keahlian
-          </h3>
-          <p className="text-xs text-zinc-500 max-w-sm mx-auto">
-            Mulai tambahkan rumpun keahlian Anda secara manual atau unggah berkas CSV secara massal.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {categories.map((cat) => (
-            <div
-              key={cat.id}
-              className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between space-y-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-                      {cat.category}
-                    </h3>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                      {cat.description}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => handleOpenEdit(cat)}
-                      className="p-1.5 rounded-lg text-zinc-500 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                      title="Edit Kategori"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(cat.id, cat.category)}
-                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                      title="Hapus Kategori"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {cat.skills &&
-                    cat.skills.map((skill) => (
-                      <span
-                        key={skill}
-                        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      </AdminModal>
     </div>
   );
 }

@@ -1,14 +1,21 @@
-import React, { useState } from "react";
-import { Plus, Trash2, Edit2, Save, HelpCircle, Download, Upload } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Plus, Trash2, Edit2, HelpCircle, Download, Upload, CheckCircle2 } from "lucide-react";
 import { usePortfolio } from "../../context/PortfolioContext";
 import { downloadExcelTemplate, parseUploadedSpreadsheet, showImportResultAlert } from "../../utils/csvHelper";
+import AdminModal from "../../components/admin/AdminModal";
+import AdminDataToolbar from "../../components/admin/AdminDataToolbar";
+import AdminPagination from "../../components/admin/AdminPagination";
 import Swal from "sweetalert2";
 
 export default function FaqManager() {
-  const { config, updateConfig, accent } = usePortfolio();
-  const [faqs, setFaqs] = useState(config?.faq || []);
+  const { config, updateConfig, accent, cardRadiusClass, buttonRadiusClass } = usePortfolio();
+  const faqs = config?.faq || [];
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState("table");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [editingId, setEditingId] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
 
   const [form, setForm] = useState({
     question: "",
@@ -23,14 +30,15 @@ export default function FaqManager() {
   const handleStartEdit = (item) => {
     setEditingId(item.id);
     setForm({
-      question: item.question,
-      answer: item.answer,
+      question: item.question || "",
+      answer: item.answer || "",
     });
   };
 
-  const handleSaveItem = (e) => {
+  // Instant Auto-Save on Add / Edit
+  const handleSaveItem = async (e) => {
     e.preventDefault();
-    if (!form.question || !form.answer) {
+    if (!form.question?.trim() || !form.answer?.trim()) {
       Swal.fire({
         title: "Kolom Belum Lengkap",
         text: "Pertanyaan dan Jawaban wajib diisi.",
@@ -39,59 +47,89 @@ export default function FaqManager() {
       return;
     }
 
+    const payload = {
+      question: form.question.trim(),
+      answer: form.answer.trim(),
+    };
+
     let updated = [];
     if (editingId === "new") {
       const newItem = {
         id: "faq-" + Date.now(),
-        ...form,
+        ...payload,
       };
-      updated = [...faqs, newItem];
+      updated = [newItem, ...faqs];
     } else {
-      updated = faqs.map((s) => (s.id === editingId ? { ...s, ...form } : s));
+      updated = faqs.map((s) => (s.id === editingId ? { ...s, ...payload } : s));
     }
 
-    setFaqs(updated);
-    setEditingId(null);
+    try {
+      await updateConfig({
+        ...config,
+        faq: updated,
+      });
+
+      setEditingId(null);
+
+      Swal.fire({
+        title: "Berhasil Disimpan",
+        text: "FAQ berhasil disimpan otomatis.",
+        icon: "success",
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 1500,
+      });
+    } catch (err) {
+      Swal.fire({
+        title: "Gagal Menyimpan",
+        text: err.message || "Terjadi kesalahan saat menyimpan data.",
+        icon: "error",
+      });
+    }
   };
 
-  const handleDelete = (id) => {
+  // Instant Auto-Save on Delete (Tanpa perlu klik simpan terpisah)
+  const handleDelete = (id, question) => {
     Swal.fire({
       title: "Hapus Pertanyaan FAQ?",
+      text: question ? `Anda yakin ingin menghapus pertanyaan "${question}"? Data akan langsung terhapus.` : "Data akan langsung terhapus.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#ef4444",
-      confirmButtonText: "Ya, Hapus",
+      cancelButtonColor: "#71717a",
+      confirmButtonText: "Ya, Hapus Sekarang",
       cancelButtonText: "Batal",
-    }).then((res) => {
+    }).then(async (res) => {
       if (res.isConfirmed) {
-        setFaqs((prev) => prev.filter((s) => s.id !== id));
+        const filtered = faqs.filter((s) => s.id !== id);
+        try {
+          await updateConfig({
+            ...config,
+            faq: filtered,
+          });
+
+          Swal.fire({
+            title: "Data Dihapus",
+            text: "Pertanyaan FAQ berhasil dihapus.",
+            icon: "success",
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 1500,
+          });
+        } catch (err) {
+          Swal.fire({
+            title: "Gagal Menghapus",
+            text: err.message || "Gagal menghapus data.",
+            icon: "error",
+          });
+        }
       }
     });
   };
 
-  const handleSaveAll = async () => {
-    setIsSaving(true);
-    try {
-      await updateConfig({
-        ...config,
-        faq: faqs,
-      });
-
-      Swal.fire({
-        title: "FAQ Disimpan!",
-        text: "Daftar pertanyaan dan jawaban berhasil disimpan.",
-        icon: "success",
-        confirmButtonColor: "#10b981",
-        timer: 1500,
-        showConfirmButton: false,
-      });
-    } catch (err) {
-      Swal.fire({ title: "Gagal Menyimpan", icon: "error" });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
+  // Excel Templates & Live Data Export
   const FAQ_TEMPLATE_HEADERS = ["Pertanyaan", "Jawaban"];
   const FAQ_SAMPLE_ROWS = [
     {
@@ -99,12 +137,8 @@ export default function FaqManager() {
       Jawaban: "Ya, saya terbuka untuk posisi Penuh Waktu (Full-time), Kontrak, maupun proyek Freelance terarah baik secara Remote maupun Hybrid.",
     },
     {
-      Pertanyaan: "Berapa lama estimasi pengerjaan sebuah situs web?",
-      Jawaban: "Rata-rata portofolio atau landing page selesai dalam 3–7 hari kerja, sedangkan aplikasi web interaktif memerlukan 2–4 minggu.",
-    },
-    {
-      Pertanyaan: "Apakah Anda bersedia bekerja secara remote?",
-      Jawaban: "Ya, saya sangat terbiasa dengan lingkungan kerja remote dan memiliki setup home office yang lengkap untuk produktivitas optimal.",
+      Pertanyaan: "Bagaimana proses alur kerja pengembangan aplikasi?",
+      Jawaban: "Dimulai dari diskusi kebutuhan, wireframing & prototyping, pengembangan frontend & backend, pengujian komprehensif, hingga deployment cloud.",
     },
   ];
 
@@ -117,7 +151,7 @@ export default function FaqManager() {
         }))
       : FAQ_SAMPLE_ROWS;
 
-    downloadExcelTemplate("template_faq_tanya_jawab", FAQ_TEMPLATE_HEADERS, exportRows, accent?.hex || "#10b981");
+    downloadExcelTemplate("template_tanya_jawab_faq", FAQ_TEMPLATE_HEADERS, exportRows, accent?.hex || "#10b981");
   };
 
   const handleSpreadsheetUpload = async (e) => {
@@ -130,8 +164,8 @@ export default function FaqManager() {
       if (!parsed.data || parsed.data.length === 0) {
         showImportResultAlert({
           successCount: 0,
-          errors: [{ row: 1, reason: "Berkas kosong atau tidak memiliki baris data." }],
-          entityName: "Tanya Jawab (FAQ)",
+          errors: [{ row: 1, reason: "Berkas kosong atau tidak ada data yang ditemukan." }],
+          entityName: "FAQ",
         });
         return;
       }
@@ -150,11 +184,6 @@ export default function FaqManager() {
         if (!question || question.toLowerCase() === "pertanyaan") {
           if (question.toLowerCase() === "pertanyaan") return;
           errors.push({ row: rowNumStr, reason: "Kolom 'Pertanyaan' tidak boleh kosong." });
-          return;
-        }
-        if (!answer || answer.toLowerCase() === "jawaban") {
-          if (answer.toLowerCase() === "jawaban") return;
-          errors.push({ row: rowNumStr, reason: "Kolom 'Jawaban' tidak boleh kosong." });
           return;
         }
 
@@ -183,8 +212,7 @@ export default function FaqManager() {
       });
 
       if (updatedCount > 0 || addedCount > 0) {
-        setFaqs(updatedList);
-        updateConfig({
+        await updateConfig({
           ...config,
           faq: updatedList,
         });
@@ -194,7 +222,7 @@ export default function FaqManager() {
         addedCount,
         updatedCount,
         errors,
-        entityName: "Tanya Jawab (FAQ)",
+        entityName: "FAQ",
       });
     } catch (err) {
       Swal.fire({
@@ -207,11 +235,28 @@ export default function FaqManager() {
     }
   };
 
+  // Filter & Pagination
+  const filteredFaqs = useMemo(() => {
+    if (!searchTerm.trim()) return faqs;
+    const q = searchTerm.toLowerCase().trim();
+    return faqs.filter((item) =>
+      item.question?.toLowerCase().includes(q) ||
+      item.answer?.toLowerCase().includes(q)
+    );
+  }, [faqs, searchTerm]);
+
+  const totalPages = Math.ceil(filteredFaqs.length / pageSize) || 1;
+  const paginatedFaqs = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredFaqs.slice(start, start + pageSize);
+  }, [filteredFaqs, currentPage, pageSize]);
+
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-6xl pb-10">
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div className={`p-2 rounded-xl ${accent.bgSubtle} ${accent.text}`}>
               <HelpCircle className="w-5 h-5" />
             </div>
@@ -220,62 +265,249 @@ export default function FaqManager() {
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-zinc-500 mt-1">
-            Kelola daftar pertanyaan yang sering diajukan oleh HR, perekrut, atau calon klien.
+            Kelola pertanyaan yang sering diajukan calon klien atau perekrut. Data tersimpan otomatis secara realtime.
           </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Download Template Excel */}
-          <button
-            onClick={handleDownloadExcel}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold ${accent.text} hover:opacity-80 transition-all shadow-sm`}
-            title="Unduh format tabel Excel (.xls) ber-header & No"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Template / Data Excel (.xls)</span>
-          </button>
-
-          <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white cursor-pointer transition-all shadow-sm">
-            <Upload className="w-3.5 h-3.5" />
-            <span>Impor Berkas Excel</span>
-            <input
-              type="file"
-              accept=".xls, .xlsx, .csv"
-              onChange={handleSpreadsheetUpload}
-              className="hidden"
-            />
-          </label>
-
-          <button
-            onClick={handleStartAdd}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl ${accent.bg} text-white font-semibold text-xs sm:text-sm hover:opacity-90 transition-all shadow-sm active:scale-95`}
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tambah Pertanyaan</span>
-          </button>
-
-          <button
-            onClick={handleSaveAll}
-            disabled={isSaving}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 font-semibold text-xs sm:text-sm hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            <span>{isSaving ? "Menyimpan..." : "Simpan Semua"}</span>
-          </button>
         </div>
       </div>
 
-      {editingId && (
-        <form
-          onSubmit={handleSaveItem}
-          className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 shadow-md space-y-4"
-        >
-          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-            <HelpCircle className={`w-4 h-4 ${accent.text}`} />
-            {editingId === "new" ? "Tambah Pertanyaan Baru" : "Edit Pertanyaan"}
-          </h2>
+      {/* Metric Cards Banner */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs`}>
+          <div className="flex items-center justify-between text-zinc-500 text-xs">
+            <span>Total Pertanyaan</span>
+            <HelpCircle className="w-4 h-4 text-zinc-400" />
+          </div>
+          <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+            {faqs.length}
+          </p>
+        </div>
 
-          <div className="space-y-1">
+        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs`}>
+          <div className="flex items-center justify-between text-zinc-500 text-xs">
+            <span>Rata-rata Jawaban</span>
+            <CheckCircle2 className="w-4 h-4 text-zinc-400" />
+          </div>
+          <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+            {faqs.filter((f) => f.answer?.length > 10).length} Aktif
+          </p>
+        </div>
+
+        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs col-span-2 sm:col-span-1`}>
+          <div className="flex items-center justify-between text-zinc-500 text-xs">
+            <span>Sistem Penyimpanan</span>
+            <CheckCircle2 className={`w-4 h-4 ${accent.text}`} />
+          </div>
+          <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Auto-Sync Realtime
+          </p>
+        </div>
+      </div>
+
+      {/* Data Toolbar */}
+      <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs`}>
+        <AdminDataToolbar
+          searchTerm={searchTerm}
+          setSearchTerm={(term) => {
+            setSearchTerm(term);
+            setCurrentPage(1);
+          }}
+          searchPlaceholder="Cari pertanyaan atau jawaban FAQ..."
+          totalCount={faqs.length}
+          filteredCount={filteredFaqs.length}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          onAddNew={handleStartAdd}
+          addLabel="Tambah FAQ"
+          onDownloadExcel={handleDownloadExcel}
+          onUploadExcel={handleSpreadsheetUpload}
+          pageSize={pageSize}
+          setPageSize={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+        />
+      </div>
+
+      {/* Main Data Presentation */}
+      {filteredFaqs.length === 0 ? (
+        <div className={`p-12 text-center bg-white dark:bg-zinc-900/40 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 space-y-3`}>
+          <HelpCircle className="w-12 h-12 text-zinc-400 mx-auto opacity-30" />
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+            {searchTerm ? "Tidak ada hasil pencarian" : "Belum Ada FAQ Ditambahkan"}
+          </h3>
+          <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+            {searchTerm
+              ? `Tidak ditemukan pertanyaan FAQ yang cocok dengan kata kunci "${searchTerm}".`
+              : "Tambahkan pertanyaan yang sering diajukan untuk mempermudah calon klien dan perekrut."}
+          </p>
+          {searchTerm ? (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+            >
+              Reset Filter
+            </button>
+          ) : (
+            <button
+              onClick={handleStartAdd}
+              className={`inline-flex items-center gap-1.5 px-4 py-2 ${buttonRadiusClass} ${accent.bg} text-white text-xs font-semibold hover:opacity-90 transition-all`}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tambah FAQ Pertama</span>
+            </button>
+          )}
+        </div>
+      ) : viewMode === "table" ? (
+        /* TABLE VIEW */
+        <div className={`bg-white dark:bg-zinc-900/70 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-2xs`}>
+          <div className="overflow-x-auto scrollbar-thin">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/75 dark:bg-zinc-950/50 text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-wider text-[10px]">
+                  <th className="py-3 px-3.5 w-12 text-center">No</th>
+                  <th className="py-3 px-4 min-w-[260px]">Pertanyaan</th>
+                  <th className="py-3 px-4 min-w-[320px]">Jawaban</th>
+                  <th className="py-3 px-4 text-right min-w-[100px]">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                {paginatedFaqs.map((item, idx) => {
+                  const globalIdx = (currentPage - 1) * pageSize + idx + 1;
+                  return (
+                    <tr
+                      key={item.id || idx}
+                      className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors group"
+                    >
+                      <td className="py-3 px-3.5 text-center font-mono text-zinc-400">
+                        {globalIdx}
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100">
+                        <div className="truncate max-w-[280px]" title={item.question}>
+                          {item.question}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-zinc-500">
+                        <div className="truncate max-w-[360px]" title={item.answer}>
+                          {item.answer}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEdit(item)}
+                            className="p-1.5 rounded-lg text-zinc-500 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            title="Edit Data"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(item.id, item.question)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                            title="Hapus Data (Langsung Otomatis Terhapus)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="p-4 border-t border-zinc-100 dark:border-zinc-800/80">
+            <AdminPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredFaqs.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        </div>
+      ) : (
+        /* GRID VIEW */
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {paginatedFaqs.map((item) => (
+              <div
+                key={item.id}
+                className={`p-5 ${cardRadiusClass} bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-3 flex flex-col justify-between hover:border-zinc-300 dark:hover:border-zinc-700 transition-all`}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-snug">
+                      {item.question}
+                    </h3>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleStartEdit(item)}
+                        className="p-1.5 rounded-lg text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id, item.question)}
+                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                        title="Hapus"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                    {item.answer}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <AdminPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredFaqs.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      )}
+
+      {/* POPUP MODAL FORM FOR ADD / EDIT */}
+      <AdminModal
+        isOpen={Boolean(editingId)}
+        onClose={() => setEditingId(null)}
+        title={editingId === "new" ? "Tambah Pertanyaan FAQ Baru" : "Edit Pertanyaan FAQ"}
+        subtitle="Data akan langsung tersimpan secara otomatis setelah Anda mengklik simpan."
+        icon={HelpCircle}
+        maxWidth="max-w-lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setEditingId(null)}
+              className={`px-4 py-2 ${buttonRadiusClass} text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors`}
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              form="faqForm"
+              className={`px-5 py-2 ${buttonRadiusClass} ${accent.bg} text-white text-xs font-semibold hover:opacity-90 transition-all shadow-sm active:scale-95`}
+            >
+              Simpan FAQ
+            </button>
+          </>
+        }
+      >
+        <form id="faqForm" onSubmit={handleSaveItem} className="space-y-4">
+          <div className="space-y-1.5">
             <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
               Pertanyaan <span className="text-rose-500">*</span>
             </label>
@@ -283,92 +515,27 @@ export default function FaqManager() {
               type="text"
               value={form.question}
               onChange={(e) => setForm({ ...form, question: e.target.value })}
-              placeholder="cth. Apakah Anda siap untuk posisi Full-time atau Kontrak?"
+              placeholder="cth. Apakah Anda menerima proyek freelance remote?"
               required
-              className="w-full px-3 py-2 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:outline-none"
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-              Jawaban <span className="text-rose-500">*</span>
+              Jawaban Lengkap <span className="text-rose-500">*</span>
             </label>
             <textarea
-              rows={3}
+              rows={5}
               value={form.answer}
               onChange={(e) => setForm({ ...form, answer: e.target.value })}
-              placeholder="Berikan jawaban yang jelas, profesional, dan solutif..."
+              placeholder="Berikan jawaban informatif dan jelas..."
               required
-              className="w-full px-3 py-2 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:outline-none resize-none"
-            ></textarea>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setEditingId(null)}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-900 dark:bg-white text-white dark:text-zinc-950"
-            >
-              Terapkan
-            </button>
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none resize-none"
+            />
           </div>
         </form>
-      )}
-
-      {/* FAQ List */}
-      {faqs.length === 0 ? (
-        <div className="p-12 text-center bg-white dark:bg-zinc-900/40 rounded-2xl border border-zinc-200 dark:border-zinc-800 space-y-3">
-          <HelpCircle className="w-10 h-10 text-zinc-400 mx-auto opacity-40" />
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-            Belum Ada Pertanyaan FAQ
-          </h3>
-          <p className="text-xs text-zinc-500 max-w-sm mx-auto">
-            Tambahkan FAQ secara manual atau unggah berkas CSV secara massal.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {faqs.map((faq) => (
-            <div
-              key={faq.id}
-              className="p-5 rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 shadow-sm space-y-2 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                  <HelpCircle className={`w-4 h-4 ${accent.text} shrink-0`} />
-                  <span>{faq.question}</span>
-                </h3>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => handleStartEdit(faq)}
-                    className="p-1 rounded-md text-zinc-400 hover:text-black dark:hover:text-white"
-                    title="Edit"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(faq.id)}
-                    className="p-1 rounded-md text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                    title="Hapus"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed pl-6">
-                {faq.answer}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
+      </AdminModal>
     </div>
   );
 }

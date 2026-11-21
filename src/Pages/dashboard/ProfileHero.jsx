@@ -76,16 +76,28 @@ export default function ProfileHero() {
     }
 
     const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
+    reader.onload = async (uploadEvent) => {
+      const dataUrl = uploadEvent.target.result;
       setFormData((prev) => ({
         ...prev,
-        photoUrl: uploadEvent.target.result,
+        photoUrl: dataUrl,
       }));
+
+      // Auto-save photo to config directly
+      await updateConfig({
+        ...config,
+        profile: {
+          ...config?.profile,
+          photoUrl: dataUrl,
+        },
+      });
 
       Swal.fire({
         title: "Foto Berhasil Dimuat!",
-        text: "Pratinjau foto profil telah diperbarui. Jangan lupa klik 'Simpan Perubahan' di bawah.",
+        text: "Foto profil otomatis tersimpan ke profil Anda.",
         icon: "success",
+        toast: true,
+        position: "top-end",
         timer: 1500,
         showConfirmButton: false,
       });
@@ -119,24 +131,93 @@ export default function ProfileHero() {
 
       setFormData((prev) => ({ ...prev, resumeUrl: publicUrl }));
 
+      // Auto-save resume URL to config directly
+      await updateConfig({
+        ...config,
+        profile: {
+          ...config?.profile,
+          resumeUrl: publicUrl,
+        },
+      });
+
       Swal.fire({
         title: "Resume Berhasil Diunggah!",
-        text: "URL resume telah diperbarui. Jangan lupa klik 'Simpan Perubahan' di bawah.",
+        text: "Berkas PDF resume otomatis tersimpan ke profil Anda.",
         icon: "success",
-        timer: 2000,
+        toast: true,
+        position: "top-end",
+        timer: 1500,
         showConfirmButton: false,
       });
     } catch (err) {
       console.error("Resume upload error:", err);
       Swal.fire({
         title: "Gagal Mengunggah",
-        text: err.message || "Terjadi kesalahan saat mengunggah resume. Pastikan bucket 'resume-files' sudah dibuat di Supabase Storage.",
+        text: err.message || "Terjadi kesalahan saat mengunggah resume.",
         icon: "error",
       });
     } finally {
       setResumeUploading(false);
       if (resumeInputRef.current) resumeInputRef.current.value = "";
     }
+  };
+
+  const handleResetPhotoDefault = async () => {
+    setFormData((prev) => ({ ...prev, photoUrl: "/Photo.jpeg" }));
+    await updateConfig({
+      ...config,
+      profile: {
+        ...config?.profile,
+        photoUrl: "/Photo.jpeg",
+      },
+    });
+    Swal.fire({
+      title: "Foto Bawaan Diterapkan",
+      icon: "success",
+      toast: true,
+      position: "top-end",
+      timer: 1200,
+      showConfirmButton: false,
+    });
+  };
+
+  const handleRemovePhoto = async () => {
+    setFormData((prev) => ({ ...prev, photoUrl: "" }));
+    await updateConfig({
+      ...config,
+      profile: {
+        ...config?.profile,
+        photoUrl: "",
+      },
+    });
+    Swal.fire({
+      title: "Foto Profil Dihapus",
+      icon: "success",
+      toast: true,
+      position: "top-end",
+      timer: 1200,
+      showConfirmButton: false,
+    });
+  };
+
+  const handleRemoveResume = async () => {
+    setFormData((prev) => ({ ...prev, resumeUrl: "" }));
+    await updateConfig({
+      ...config,
+      profile: {
+        ...config?.profile,
+        resumeUrl: "",
+      },
+    });
+    Swal.fire({
+      title: "Resume Dihapus",
+      text: "Tautan berkas resume berhasil dihapus dari profil.",
+      icon: "success",
+      toast: true,
+      position: "top-end",
+      timer: 1200,
+      showConfirmButton: false,
+    });
   };
 
   const handleResumeUpload = (e) => {
@@ -192,21 +273,34 @@ export default function ProfileHero() {
       title: "Profil & Hero Disimpan!",
       text: "Perubahan foto, identitas, dan headline langsung diterapkan di situs.",
       icon: "success",
-      confirmButtonColor: "#10b981",
+      toast: true,
+      position: "top-end",
       timer: 1800,
       showConfirmButton: false,
     });
   };
 
   return (
-    <div className="space-y-8 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
-          Kustomisasi Profil & Hero
-        </h1>
-        <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-          Ubah foto avatar profil, nama lengkap, headline hero, lencana status ketersediaan kerja, dan metrik capaian.
-        </p>
+    <div className="space-y-6 max-w-4xl pb-10">
+      {/* Top Header with Save Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+            Kustomisasi Profil &amp; Hero
+          </h1>
+          <p className="text-xs sm:text-sm text-zinc-500 mt-1">
+            Ubah foto avatar profil, nama lengkap, headline hero, lencana status ketersediaan kerja, dan metrik capaian.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSubmit}
+          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl ${accent.bg} text-white font-semibold text-xs sm:text-sm hover:opacity-90 transition-all shadow-sm active:scale-95 shrink-0 self-start sm:self-auto`}
+        >
+          <Save className="w-4 h-4" />
+          <span>Simpan Perubahan</span>
+        </button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
@@ -253,7 +347,7 @@ export default function ProfileHero() {
                   value={formData.photoUrl}
                   onChange={handleChange}
                   placeholder="https://... atau /Photo.jpeg"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
                 />
               </div>
 
@@ -272,7 +366,7 @@ export default function ProfileHero() {
 
                 <button
                   type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, photoUrl: "/Photo.jpeg" }))}
+                  onClick={handleResetPhotoDefault}
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
@@ -282,7 +376,7 @@ export default function ProfileHero() {
                 {formData.photoUrl && (
                   <button
                     type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, photoUrl: "" }))}
+                    onClick={handleRemovePhoto}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -291,7 +385,7 @@ export default function ProfileHero() {
                 )}
               </div>
               <p className="text-[11px] text-zinc-500">
-                Format yang didukung: JPG, PNG, WEBP. Foto ini akan tampil di bagian "Tentang Saya" (About).
+                Format yang didukung: JPG, PNG, WEBP. Foto ini otomatis tersimpan saat Anda memilih berkas.
               </p>
             </div>
           </div>
@@ -311,7 +405,7 @@ export default function ProfileHero() {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
               />
             </div>
 
@@ -323,7 +417,7 @@ export default function ProfileHero() {
                 value={formData.initials}
                 onChange={handleChange}
                 maxLength={4}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
               />
             </div>
 
@@ -334,7 +428,7 @@ export default function ProfileHero() {
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
               />
             </div>
 
@@ -345,7 +439,7 @@ export default function ProfileHero() {
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
               />
             </div>
 
@@ -366,9 +460,9 @@ export default function ProfileHero() {
                   </a>
                   <button
                     type="button"
-                    onClick={() => setFormData((p) => ({ ...p, resumeUrl: "" }))}
-                    className="p-0.5 text-zinc-400 hover:text-red-500 transition-colors"
-                    title="Hapus URL Resume"
+                    onClick={handleRemoveResume}
+                    className="p-1 text-zinc-400 hover:text-red-500 transition-colors"
+                    title="Hapus Berkas Resume"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -435,7 +529,7 @@ export default function ProfileHero() {
                 name="contactEmail"
                 value={formData.contactEmail}
                 onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
               />
             </div>
           </div>
@@ -449,7 +543,7 @@ export default function ProfileHero() {
                 name="statusText"
                 value={formData.statusText}
                 onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
               />
             </div>
 
@@ -460,7 +554,7 @@ export default function ProfileHero() {
                 name="isAvailable"
                 checked={formData.isAvailable}
                 onChange={handleChange}
-                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                className="w-4 h-4 rounded text-zinc-900 dark:text-zinc-100 focus:ring-0 cursor-pointer"
               />
               <label htmlFor="isAvailable" className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 cursor-pointer">
                 Tandai sebagai "Tersedia untuk Bekerja" (Titik Hijau Berkedip)
@@ -484,7 +578,7 @@ export default function ProfileHero() {
                 value={formData.headlinePrefix}
                 onChange={handleChange}
                 placeholder="Membangun aplikasi web yang bersih, cepat, dan"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
               />
             </div>
 
@@ -496,7 +590,7 @@ export default function ProfileHero() {
                 value={formData.headlineAccent}
                 onChange={handleChange}
                 placeholder="berdampak tinggi"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
               />
             </div>
 
@@ -508,7 +602,7 @@ export default function ProfileHero() {
                 value={formData.headlineSuffix}
                 onChange={handleChange}
                 placeholder="dengan arsitektur modern."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
               />
             </div>
           </div>
@@ -520,7 +614,7 @@ export default function ProfileHero() {
               rows={3}
               value={formData.bio}
               onChange={handleChange}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500 resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 resize-none transition-colors"
             ></textarea>
           </div>
 
@@ -532,7 +626,7 @@ export default function ProfileHero() {
                 name="primaryCtaText"
                 value={formData.primaryCtaText}
                 onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
               />
             </div>
             <div className="space-y-1">
@@ -542,7 +636,7 @@ export default function ProfileHero() {
                 name="secondaryCtaText"
                 value={formData.secondaryCtaText}
                 onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
               />
             </div>
           </div>
