@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Plus, Trash2, Edit2, Save, GraduationCap, Calendar, Download, Upload } from "lucide-react";
 import { usePortfolio } from "../../context/PortfolioContext";
-import { downloadExcelTemplate, downloadCsvTemplate, parseUploadedSpreadsheet, showImportResultAlert } from "../../utils/csvHelper";
+import { downloadExcelTemplate, parseUploadedSpreadsheet, showImportResultAlert } from "../../utils/csvHelper";
 import Swal from "sweetalert2";
 
 export default function EducationManager() {
@@ -154,11 +154,20 @@ export default function EducationManager() {
   ];
 
   const handleDownloadExcel = () => {
-    downloadExcelTemplate("template_pendidikan_formal", EDU_TEMPLATE_HEADERS, EDU_SAMPLE_ROWS, "#10b981");
-  };
+    const exportRows = (education && education.length > 0)
+      ? education.map((edu, idx) => ({
+          No: idx + 1,
+          Gelar_Jurusan: edu.degree || "",
+          Institusi_Universitas: edu.institution || "",
+          Tahun_Mulai: edu.startDate || "2020",
+          Tahun_Selesai: edu.isCurrent ? "" : (edu.endDate || "2024"),
+          Masih_Studi: edu.isCurrent ? "YA" : "TIDAK",
+          Deskripsi: edu.description || "",
+          Predikat_Nilai: edu.grade || "",
+        }))
+      : EDU_SAMPLE_ROWS;
 
-  const handleDownloadCsv = () => {
-    downloadCsvTemplate("template_pendidikan_formal", EDU_TEMPLATE_HEADERS, EDU_SAMPLE_ROWS);
+    downloadExcelTemplate("template_pendidikan_formal", EDU_TEMPLATE_HEADERS, exportRows, accent.hex || "#10b981");
   };
 
   const handleSpreadsheetUpload = async (e) => {
@@ -177,33 +186,40 @@ export default function EducationManager() {
         return;
       }
 
-      const imported = [];
+      const updatedList = [...education];
+      let updatedCount = 0;
+      let addedCount = 0;
       const errors = [];
 
       parsed.data.forEach((row) => {
-        const rowNum = row["No"] || row["no"] || row._rowNumber;
-        const degree = row["Gelar_Jurusan"] || row["Degree"] || row["gelar"];
-        const institution = row["Institusi_Universitas"] || row["Institution"] || row["institusi"];
-        const start = row["Tahun_Mulai"] || row["StartYear"] || "2020";
-        const end = row["Tahun_Selesai"] || row["EndYear"] || "2024";
-        const currentRaw = (row["Masih_Studi"] || "").toUpperCase();
+        const rowNumStr = row["No"] || row["no"] || row._rowNumber;
+        const rowNo = parseInt(rowNumStr, 10);
+        const degree = (row["Gelar_Jurusan"] || row["Degree"] || row["gelar"] || "").trim();
+        const institution = (row["Institusi_Universitas"] || row["Institution"] || row["institusi"] || "").trim();
+        const start = (row["Tahun_Mulai"] || row["StartYear"] || "2020").trim();
+        const end = (row["Tahun_Selesai"] || row["EndYear"] || "2024").trim();
+        const currentRaw = (row["Masih_Studi"] || "").toUpperCase().trim();
         const isCurrent = currentRaw === "YA" || currentRaw === "YES" || currentRaw === "TRUE";
-        const description = row["Deskripsi"] || row["Description"] || "";
-        const grade = row["Predikat_Nilai"] || row["Grade"] || "";
+        const description = (row["Deskripsi"] || row["Description"] || "").trim();
+        const grade = (row["Predikat_Nilai"] || row["Grade"] || "").trim();
 
         if (!degree) {
-          errors.push({ row: rowNum, reason: "Kolom 'Gelar_Jurusan' tidak boleh kosong." });
+          errors.push({ row: rowNumStr, reason: "Kolom 'Gelar_Jurusan' tidak boleh kosong." });
           return;
         }
         if (!institution) {
-          errors.push({ row: rowNum, reason: "Kolom 'Institusi_Universitas' tidak boleh kosong." });
+          errors.push({ row: rowNumStr, reason: "Kolom 'Institusi_Universitas' tidak boleh kosong." });
           return;
         }
 
         const period = `${start} — ${isCurrent ? "Sekarang" : end}`;
 
-        imported.push({
-          id: "edu-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        // Cek apakah data ini mengupdate data yang sudah ada (berdasarkan No urut atau Gelar+Institusi)
+        const existingIdx = (!isNaN(rowNo) && rowNo >= 1 && rowNo <= education.length)
+          ? rowNo - 1
+          : updatedList.findIndex((item) => item.degree?.toLowerCase() === degree.toLowerCase() && item.institution?.toLowerCase() === institution.toLowerCase());
+
+        const payload = {
           degree,
           institution,
           startDate: start,
@@ -212,20 +228,34 @@ export default function EducationManager() {
           period,
           description,
           grade,
-        });
+        };
+
+        if (existingIdx >= 0 && existingIdx < updatedList.length) {
+          updatedList[existingIdx] = {
+            ...updatedList[existingIdx],
+            ...payload,
+          };
+          updatedCount++;
+        } else {
+          updatedList.push({
+            id: "edu-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+            ...payload,
+          });
+          addedCount++;
+        }
       });
 
-      if (imported.length > 0) {
-        const updated = [...education, ...imported];
-        setEducation(updated);
+      if (updatedCount > 0 || addedCount > 0) {
+        setEducation(updatedList);
         updateConfig({
           ...config,
-          education: updated,
+          education: updatedList,
         });
       }
 
       showImportResultAlert({
-        successCount: imported.length,
+        addedCount,
+        updatedCount,
         errors,
         entityName: "Pendidikan",
       });
@@ -261,29 +291,19 @@ export default function EducationManager() {
           {/* Download Template Excel */}
           <button
             onClick={handleDownloadExcel}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all shadow-sm"
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold ${accent.text} hover:opacity-80 transition-all shadow-sm`}
             title="Unduh format tabel Excel (.xls) ber-header & No"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Template Excel (.xls)</span>
-          </button>
-
-          {/* Download Template CSV */}
-          <button
-            onClick={handleDownloadCsv}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-all shadow-sm"
-            title="Unduh format CSV (.csv) ber-header & No"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Template CSV</span>
+            <span>Template / Data Excel (.xls)</span>
           </button>
 
           <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white cursor-pointer transition-all shadow-sm">
             <Upload className="w-3.5 h-3.5" />
-            <span>Impor Excel / CSV</span>
+            <span>Impor Berkas Excel</span>
             <input
               type="file"
-              accept=".csv, .xls, .xlsx"
+              accept=".xls, .xlsx, .csv"
               onChange={handleSpreadsheetUpload}
               className="hidden"
             />

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Plus, Trash2, Edit2, Save, Share2, Globe, ExternalLink, Download, Upload } from "lucide-react";
 import { usePortfolio } from "../../context/PortfolioContext";
 import IconPickerModal, { AVAILABLE_ICONS } from "../../components/IconPickerModal";
-import { downloadExcelTemplate, downloadCsvTemplate, parseUploadedSpreadsheet, showImportResultAlert } from "../../utils/csvHelper";
+import { downloadExcelTemplate, parseUploadedSpreadsheet, showImportResultAlert } from "../../utils/csvHelper";
 import Swal from "sweetalert2";
 
 export default function SocialLinksManager() {
@@ -119,11 +119,18 @@ export default function SocialLinksManager() {
   ];
 
   const handleDownloadExcel = () => {
-    downloadExcelTemplate("template_tautan_sosial", SOCIAL_TEMPLATE_HEADERS, SOCIAL_SAMPLE_ROWS, "#10b981");
-  };
+    const exportRows = (links && links.length > 0)
+      ? links.map((l, idx) => ({
+          No: idx + 1,
+          Nama_Platform: l.platform || "",
+          Handle_Username: l.handle || "",
+          Tautan_URL: l.url || "",
+          Deskripsi: l.description || "",
+          Nama_Ikon: l.icon || "Globe",
+        }))
+      : SOCIAL_SAMPLE_ROWS;
 
-  const handleDownloadCsv = () => {
-    downloadCsvTemplate("template_tautan_sosial", SOCIAL_TEMPLATE_HEADERS, SOCIAL_SAMPLE_ROWS);
+    downloadExcelTemplate("template_tautan_sosial", SOCIAL_TEMPLATE_HEADERS, exportRows, accent?.hex || "#10b981");
   };
 
   const handleSpreadsheetUpload = async (e) => {
@@ -142,47 +149,67 @@ export default function SocialLinksManager() {
         return;
       }
 
-      const imported = [];
+      const updatedList = [...links];
+      let updatedCount = 0;
+      let addedCount = 0;
       const errors = [];
 
       parsed.data.forEach((row) => {
-        const rowNum = row["No"] || row["no"] || row._rowNumber;
-        const platform = row["Nama_Platform"] || row["Platform"] || row["platform"];
-        const handle = row["Handle_Username"] || row["Handle"] || "";
-        const url = row["Tautan_URL"] || row["Url"] || row["url"];
-        const description = row["Deskripsi"] || row["Description"] || "";
-        const icon = row["Nama_Ikon"] || row["Icon"] || "Globe";
+        const rowNumStr = row["No"] || row["no"] || row._rowNumber;
+        const rowNo = parseInt(rowNumStr, 10);
+        const platform = (row["Nama_Platform"] || row["Platform"] || row["platform"] || "").trim();
+        const handle = (row["Handle_Username"] || row["Handle"] || "").trim();
+        const url = (row["Tautan_URL"] || row["Url"] || row["url"] || "").trim();
+        const description = (row["Deskripsi"] || row["Description"] || "").trim();
+        const icon = (row["Nama_Ikon"] || row["Icon"] || "Globe").trim();
 
         if (!platform) {
-          errors.push({ row: rowNum, reason: "Kolom 'Nama_Platform' tidak boleh kosong." });
+          errors.push({ row: rowNumStr, reason: "Kolom 'Nama_Platform' tidak boleh kosong." });
           return;
         }
         if (!url) {
-          errors.push({ row: rowNum, reason: "Kolom 'Tautan_URL' tidak boleh kosong." });
+          errors.push({ row: rowNumStr, reason: "Kolom 'Tautan_URL' tidak boleh kosong." });
           return;
         }
 
-        imported.push({
-          id: "soc-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        const existingIdx = (!isNaN(rowNo) && rowNo >= 1 && rowNo <= links.length)
+          ? rowNo - 1
+          : updatedList.findIndex((item) => item.platform?.toLowerCase() === platform.toLowerCase());
+
+        const payload = {
           platform,
           handle,
           url,
           description,
           icon: AVAILABLE_ICONS[icon] ? icon : "Globe",
-        });
+        };
+
+        if (existingIdx >= 0 && existingIdx < updatedList.length) {
+          updatedList[existingIdx] = {
+            ...updatedList[existingIdx],
+            ...payload,
+          };
+          updatedCount++;
+        } else {
+          updatedList.push({
+            id: "soc-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+            ...payload,
+          });
+          addedCount++;
+        }
       });
 
-      if (imported.length > 0) {
-        const updated = [...links, ...imported];
-        setLinks(updated);
+      if (updatedCount > 0 || addedCount > 0) {
+        setLinks(updatedList);
         updateConfig({
           ...config,
-          socialLinksList: updated,
+          socialLinksList: updatedList,
         });
       }
 
       showImportResultAlert({
-        successCount: imported.length,
+        addedCount,
+        updatedCount,
         errors,
         entityName: "Tautan Sosial",
       });
@@ -220,29 +247,19 @@ export default function SocialLinksManager() {
           {/* Download Template Excel */}
           <button
             onClick={handleDownloadExcel}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all shadow-sm"
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold ${accent.text} hover:opacity-80 transition-all shadow-sm`}
             title="Unduh format tabel Excel (.xls) ber-header & No"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Template Excel (.xls)</span>
-          </button>
-
-          {/* Download Template CSV */}
-          <button
-            onClick={handleDownloadCsv}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-all shadow-sm"
-            title="Unduh format CSV (.csv) ber-header & No"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Template CSV</span>
+            <span>Template / Data Excel (.xls)</span>
           </button>
 
           <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white cursor-pointer transition-all shadow-sm">
             <Upload className="w-3.5 h-3.5" />
-            <span>Impor Excel / CSV</span>
+            <span>Impor Berkas Excel</span>
             <input
               type="file"
-              accept=".csv, .xls, .xlsx"
+              accept=".xls, .xlsx, .csv"
               onChange={handleSpreadsheetUpload}
               className="hidden"
             />

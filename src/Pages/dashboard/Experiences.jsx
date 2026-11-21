@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { usePortfolio } from "../../context/PortfolioContext";
 import { Plus, Trash2, Pencil, MoveUp, MoveDown, Briefcase, Calendar, Download, Upload, FileSpreadsheet } from "lucide-react";
-import { downloadExcelTemplate, downloadCsvTemplate, parseUploadedSpreadsheet, showImportResultAlert } from "../../utils/csvHelper";
+import { downloadExcelTemplate, parseUploadedSpreadsheet, showImportResultAlert } from "../../utils/csvHelper";
 import Swal from "sweetalert2";
 
 const MONTH_NAMES = [
@@ -203,14 +203,24 @@ export default function Experiences() {
   ];
 
   const handleDownloadExcel = () => {
-    downloadExcelTemplate("template_pengalaman_kerja", EXP_TEMPLATE_HEADERS, EXP_SAMPLE_ROWS, "#10b981");
+    const exportRows = (experiences && experiences.length > 0)
+      ? experiences.map((exp, idx) => ({
+          No: idx + 1,
+          Posisi: exp.role || "",
+          Perusahaan: exp.company || "",
+          Bulan_Mulai: exp.startDate || "",
+          Bulan_Selesai: exp.isCurrent ? "" : (exp.endDate || ""),
+          Masih_Bekerja: exp.isCurrent ? "YA" : "TIDAK",
+          Lokasi: exp.location || "Indonesia",
+          Deskripsi: exp.description || "",
+          Teknologi_Keahlian: Array.isArray(exp.skills) ? exp.skills.join(", ") : (exp.skills || ""),
+        }))
+      : EXP_SAMPLE_ROWS;
+
+    downloadExcelTemplate("template_pengalaman_kerja", EXP_TEMPLATE_HEADERS, exportRows, accent.hex || "#10b981");
   };
 
-  const handleDownloadCsv = () => {
-    downloadCsvTemplate("template_pengalaman_kerja", EXP_TEMPLATE_HEADERS, EXP_SAMPLE_ROWS);
-  };
-
-  // Bulk Spreadsheet Upload (Excel .xls / CSV .csv)
+  // Bulk Spreadsheet Upload (Excel .xls / .xlsx)
   const handleSpreadsheetUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -227,27 +237,30 @@ export default function Experiences() {
         return;
       }
 
-      const importedItems = [];
+      const updatedList = [...experiences];
+      let updatedCount = 0;
+      let addedCount = 0;
       const errors = [];
 
       parsed.data.forEach((row) => {
-        const rowNum = row["No"] || row["no"] || row._rowNumber;
-        const role = row["Posisi"] || row["Role"] || row["posisi"];
-        const company = row["Perusahaan"] || row["Company"] || row["perusahaan"];
-        const startDate = row["Bulan_Mulai"] || row["StartDate"] || row["bulan_mulai"];
-        const endDate = row["Bulan_Selesai"] || row["EndDate"] || row["bulan_selesai"];
-        const isCurrentRaw = (row["Masih_Bekerja"] || row["IsCurrent"] || "").toUpperCase();
+        const rowNumStr = row["No"] || row["no"] || row._rowNumber;
+        const rowNo = parseInt(rowNumStr, 10);
+        const role = (row["Posisi"] || row["Role"] || row["posisi"] || "").trim();
+        const company = (row["Perusahaan"] || row["Company"] || row["perusahaan"] || "").trim();
+        const startDate = (row["Bulan_Mulai"] || row["StartDate"] || row["bulan_mulai"] || "").trim();
+        const endDate = (row["Bulan_Selesai"] || row["EndDate"] || row["bulan_selesai"] || "").trim();
+        const isCurrentRaw = (row["Masih_Bekerja"] || row["IsCurrent"] || "").toUpperCase().trim();
         const isCurrent = isCurrentRaw === "YA" || isCurrentRaw === "YES" || isCurrentRaw === "TRUE" || !endDate;
-        const location = row["Lokasi"] || row["Location"] || "Indonesia";
-        const description = row["Deskripsi"] || row["Description"] || "";
+        const location = (row["Lokasi"] || row["Location"] || "Indonesia").trim();
+        const description = (row["Deskripsi"] || row["Description"] || "").trim();
         const skillsRaw = row["Teknologi_Keahlian"] || row["Skills"] || "";
 
         if (!role) {
-          errors.push({ row: rowNum, reason: "Kolom 'Posisi' tidak boleh kosong." });
+          errors.push({ row: rowNumStr, reason: "Kolom 'Posisi' tidak boleh kosong." });
           return;
         }
         if (!company) {
-          errors.push({ row: rowNum, reason: "Kolom 'Perusahaan' tidak boleh kosong." });
+          errors.push({ row: rowNumStr, reason: "Kolom 'Perusahaan' tidak boleh kosong." });
           return;
         }
 
@@ -257,8 +270,11 @@ export default function Experiences() {
 
         const skills = skillsRaw ? String(skillsRaw).split(/[,|;]/).map((s) => s.trim()).filter(Boolean) : [];
 
-        importedItems.push({
-          id: `exp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        const existingIdx = (!isNaN(rowNo) && rowNo >= 1 && rowNo <= experiences.length)
+          ? rowNo - 1
+          : updatedList.findIndex((item) => item.role?.toLowerCase() === role.toLowerCase() && item.company?.toLowerCase() === company.toLowerCase());
+
+        const payload = {
           role,
           company,
           startDate: startDate || "2023-01",
@@ -268,18 +284,33 @@ export default function Experiences() {
           location,
           description,
           skills,
-        });
+        };
+
+        if (existingIdx >= 0 && existingIdx < updatedList.length) {
+          updatedList[existingIdx] = {
+            ...updatedList[existingIdx],
+            ...payload,
+          };
+          updatedCount++;
+        } else {
+          updatedList.push({
+            id: `exp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            ...payload,
+          });
+          addedCount++;
+        }
       });
 
-      if (importedItems.length > 0) {
+      if (updatedCount > 0 || addedCount > 0) {
         updateConfig({
           ...config,
-          experiences: [...importedItems, ...experiences],
+          experiences: updatedList,
         });
       }
 
       showImportResultAlert({
-        successCount: importedItems.length,
+        addedCount,
+        updatedCount,
         errors,
         entityName: "Pengalaman Kerja",
       });
@@ -312,32 +343,23 @@ export default function Experiences() {
           </p>
         </div>
 
-        {/* Action Buttons: Add, Download Template, Import CSV / Excel */}
+        {/* Action Buttons: Add, Download Template, Import Excel */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleDownloadExcel}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all shadow-sm"
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold ${accent.text} hover:opacity-80 transition-all shadow-sm`}
             title="Unduh format tabel Excel (.xls) ber-header & No"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Template Excel (.xls)</span>
-          </button>
-
-          <button
-            onClick={handleDownloadCsv}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-all shadow-sm"
-            title="Unduh format CSV (.csv) ber-header & No"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Template CSV</span>
+            <span>Template / Data Excel (.xls)</span>
           </button>
 
           <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white cursor-pointer transition-all shadow-sm">
             <Upload className="w-3.5 h-3.5" />
-            <span>Impor Excel / CSV</span>
+            <span>Impor Berkas Excel</span>
             <input
               type="file"
-              accept=".csv, .xls, .xlsx"
+              accept=".xls, .xlsx, .csv"
               onChange={handleSpreadsheetUpload}
               className="hidden"
             />

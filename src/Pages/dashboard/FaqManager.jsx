@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Plus, Trash2, Edit2, Save, HelpCircle, Download, Upload } from "lucide-react";
 import { usePortfolio } from "../../context/PortfolioContext";
-import { downloadExcelTemplate, downloadCsvTemplate, parseUploadedSpreadsheet, showImportResultAlert } from "../../utils/csvHelper";
+import { downloadExcelTemplate, parseUploadedSpreadsheet, showImportResultAlert } from "../../utils/csvHelper";
 import Swal from "sweetalert2";
 
 export default function FaqManager() {
@@ -109,11 +109,15 @@ export default function FaqManager() {
   ];
 
   const handleDownloadExcel = () => {
-    downloadExcelTemplate("template_faq_tanya_jawab", FAQ_TEMPLATE_HEADERS, FAQ_SAMPLE_ROWS, "#10b981");
-  };
+    const exportRows = (faqs && faqs.length > 0)
+      ? faqs.map((f, idx) => ({
+          No: idx + 1,
+          Pertanyaan: f.question || "",
+          Jawaban: f.answer || "",
+        }))
+      : FAQ_SAMPLE_ROWS;
 
-  const handleDownloadCsv = () => {
-    downloadCsvTemplate("template_faq_tanya_jawab", FAQ_TEMPLATE_HEADERS, FAQ_SAMPLE_ROWS);
+    downloadExcelTemplate("template_faq_tanya_jawab", FAQ_TEMPLATE_HEADERS, exportRows, accent?.hex || "#10b981");
   };
 
   const handleSpreadsheetUpload = async (e) => {
@@ -132,41 +136,61 @@ export default function FaqManager() {
         return;
       }
 
-      const imported = [];
+      const updatedList = [...faqs];
+      let updatedCount = 0;
+      let addedCount = 0;
       const errors = [];
 
       parsed.data.forEach((row) => {
-        const rowNum = row["No"] || row["no"] || row._rowNumber;
-        const question = row["Pertanyaan"] || row["Question"] || row["pertanyaan"];
-        const answer = row["Jawaban"] || row["Answer"] || row["jawaban"];
+        const rowNumStr = row["No"] || row["no"] || row._rowNumber;
+        const rowNo = parseInt(rowNumStr, 10);
+        const question = (row["Pertanyaan"] || row["Question"] || row["pertanyaan"] || "").trim();
+        const answer = (row["Jawaban"] || row["Answer"] || row["jawaban"] || "").trim();
 
         if (!question) {
-          errors.push({ row: rowNum, reason: "Kolom 'Pertanyaan' tidak boleh kosong." });
+          errors.push({ row: rowNumStr, reason: "Kolom 'Pertanyaan' tidak boleh kosong." });
           return;
         }
         if (!answer) {
-          errors.push({ row: rowNum, reason: "Kolom 'Jawaban' tidak boleh kosong." });
+          errors.push({ row: rowNumStr, reason: "Kolom 'Jawaban' tidak boleh kosong." });
           return;
         }
 
-        imported.push({
-          id: "faq-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        const existingIdx = (!isNaN(rowNo) && rowNo >= 1 && rowNo <= faqs.length)
+          ? rowNo - 1
+          : updatedList.findIndex((item) => item.question?.toLowerCase() === question.toLowerCase());
+
+        const payload = {
           question,
           answer,
-        });
+        };
+
+        if (existingIdx >= 0 && existingIdx < updatedList.length) {
+          updatedList[existingIdx] = {
+            ...updatedList[existingIdx],
+            ...payload,
+          };
+          updatedCount++;
+        } else {
+          updatedList.push({
+            id: "faq-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+            ...payload,
+          });
+          addedCount++;
+        }
       });
 
-      if (imported.length > 0) {
-        const updated = [...faqs, ...imported];
-        setFaqs(updated);
+      if (updatedCount > 0 || addedCount > 0) {
+        setFaqs(updatedList);
         updateConfig({
           ...config,
-          faq: updated,
+          faq: updatedList,
         });
       }
 
       showImportResultAlert({
-        successCount: imported.length,
+        addedCount,
+        updatedCount,
         errors,
         entityName: "Tanya Jawab (FAQ)",
       });
@@ -202,29 +226,19 @@ export default function FaqManager() {
           {/* Download Template Excel */}
           <button
             onClick={handleDownloadExcel}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all shadow-sm"
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold ${accent.text} hover:opacity-80 transition-all shadow-sm`}
             title="Unduh format tabel Excel (.xls) ber-header & No"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Template Excel (.xls)</span>
-          </button>
-
-          {/* Download Template CSV */}
-          <button
-            onClick={handleDownloadCsv}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-all shadow-sm"
-            title="Unduh format CSV (.csv) ber-header & No"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Template CSV</span>
+            <span>Template / Data Excel (.xls)</span>
           </button>
 
           <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white cursor-pointer transition-all shadow-sm">
             <Upload className="w-3.5 h-3.5" />
-            <span>Impor Excel / CSV</span>
+            <span>Impor Berkas Excel</span>
             <input
               type="file"
-              accept=".csv, .xls, .xlsx"
+              accept=".xls, .xlsx, .csv"
               onChange={handleSpreadsheetUpload}
               className="hidden"
             />

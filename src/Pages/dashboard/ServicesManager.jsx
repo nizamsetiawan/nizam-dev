@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Plus, Trash2, Edit2, Save, Layout, Download, Upload, Palette } from "lucide-react";
 import { usePortfolio } from "../../context/PortfolioContext";
 import IconPickerModal, { AVAILABLE_ICONS } from "../../components/IconPickerModal";
-import { downloadExcelTemplate, downloadCsvTemplate, parseUploadedSpreadsheet, showImportResultAlert } from "../../utils/csvHelper";
+import { downloadExcelTemplate, parseUploadedSpreadsheet, showImportResultAlert } from "../../utils/csvHelper";
 import Swal from "sweetalert2";
 
 export default function ServicesManager() {
@@ -110,11 +110,16 @@ export default function ServicesManager() {
   ];
 
   const handleDownloadExcel = () => {
-    downloadExcelTemplate("template_layanan_solusi", SERVICES_TEMPLATE_HEADERS, SERVICES_SAMPLE_ROWS, "#10b981");
-  };
+    const exportRows = (services && services.length > 0)
+      ? services.map((s, idx) => ({
+          No: idx + 1,
+          Judul_Layanan: s.title || "",
+          Deskripsi: s.description || "",
+          Nama_Ikon: s.icon || "Layout",
+        }))
+      : SERVICES_SAMPLE_ROWS;
 
-  const handleDownloadCsv = () => {
-    downloadCsvTemplate("template_layanan_solusi", SERVICES_TEMPLATE_HEADERS, SERVICES_SAMPLE_ROWS);
+    downloadExcelTemplate("template_layanan_solusi", SERVICES_TEMPLATE_HEADERS, exportRows, accent?.hex || "#10b981");
   };
 
   const handleSpreadsheetUpload = async (e) => {
@@ -133,39 +138,59 @@ export default function ServicesManager() {
         return;
       }
 
-      const imported = [];
+      const updatedList = [...services];
+      let updatedCount = 0;
+      let addedCount = 0;
       const errors = [];
 
       parsed.data.forEach((row) => {
-        const rowNum = row["No"] || row["no"] || row._rowNumber;
-        const title = row["Judul_Layanan"] || row["Title"] || row["judul"];
-        const description = row["Deskripsi"] || row["Description"] || "";
-        const icon = row["Nama_Ikon"] || row["Icon"] || "Layout";
+        const rowNumStr = row["No"] || row["no"] || row._rowNumber;
+        const rowNo = parseInt(rowNumStr, 10);
+        const title = (row["Judul_Layanan"] || row["Title"] || row["judul"] || "").trim();
+        const description = (row["Deskripsi"] || row["Description"] || "").trim();
+        const icon = (row["Nama_Ikon"] || row["Icon"] || "Layout").trim();
 
         if (!title) {
-          errors.push({ row: rowNum, reason: "Kolom 'Judul_Layanan' tidak boleh kosong." });
+          errors.push({ row: rowNumStr, reason: "Kolom 'Judul_Layanan' tidak boleh kosong." });
           return;
         }
 
-        imported.push({
-          id: "srv-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        const existingIdx = (!isNaN(rowNo) && rowNo >= 1 && rowNo <= services.length)
+          ? rowNo - 1
+          : updatedList.findIndex((item) => item.title?.toLowerCase() === title.toLowerCase());
+
+        const payload = {
           title,
           description,
           icon: AVAILABLE_ICONS[icon] ? icon : "Layout",
-        });
+        };
+
+        if (existingIdx >= 0 && existingIdx < updatedList.length) {
+          updatedList[existingIdx] = {
+            ...updatedList[existingIdx],
+            ...payload,
+          };
+          updatedCount++;
+        } else {
+          updatedList.push({
+            id: "srv-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+            ...payload,
+          });
+          addedCount++;
+        }
       });
 
-      if (imported.length > 0) {
-        const updated = [...services, ...imported];
-        setServices(updated);
+      if (updatedCount > 0 || addedCount > 0) {
+        setServices(updatedList);
         updateConfig({
           ...config,
-          services: updated,
+          services: updatedList,
         });
       }
 
       showImportResultAlert({
-        successCount: imported.length,
+        addedCount,
+        updatedCount,
         errors,
         entityName: "Layanan",
       });
@@ -203,29 +228,19 @@ export default function ServicesManager() {
           {/* Download Template Excel */}
           <button
             onClick={handleDownloadExcel}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all shadow-sm"
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold ${accent.text} hover:opacity-80 transition-all shadow-sm`}
             title="Unduh format tabel Excel (.xls) ber-header & No"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Template Excel (.xls)</span>
-          </button>
-
-          {/* Download Template CSV */}
-          <button
-            onClick={handleDownloadCsv}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-all shadow-sm"
-            title="Unduh format CSV (.csv) ber-header & No"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Template CSV</span>
+            <span>Template / Data Excel (.xls)</span>
           </button>
 
           <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white cursor-pointer transition-all shadow-sm">
             <Upload className="w-3.5 h-3.5" />
-            <span>Impor Excel / CSV</span>
+            <span>Impor Berkas Excel</span>
             <input
               type="file"
-              accept=".csv, .xls, .xlsx"
+              accept=".xls, .xlsx, .csv"
               onChange={handleSpreadsheetUpload}
               className="hidden"
             />

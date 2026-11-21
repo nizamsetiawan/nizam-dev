@@ -157,6 +157,14 @@ export const parseCsvText = (text) => {
     headers.forEach((h, idx) => {
       obj[h] = row[idx] ?? "";
     });
+
+    // Abaikan baris yang seluruh kolom datanya kosong
+    const hasAnyData = Object.entries(obj).some(([k, v]) => {
+      if (k === "_rowNumber" || k.toLowerCase() === "no") return false;
+      return v !== null && v !== undefined && String(v).trim() !== "";
+    });
+    if (!hasAnyData) continue;
+
     data.push(obj);
   }
 
@@ -187,12 +195,26 @@ export const parseUploadedSpreadsheet = async (file) => {
     const trList = tbody ? Array.from(tbody.querySelectorAll("tr")) : Array.from(table.querySelectorAll("tr")).slice(1);
 
     trList.forEach((tr, rIdx) => {
+      // Abaikan baris tersembunyi (cth. helper supportMisalignedColumns dari WPS Office/Excel)
+      const styleAttr = tr.getAttribute("style") || "";
+      if (tr.style?.display === "none" || styleAttr.replace(/\s+/g, "").includes("display:none")) {
+        return;
+      }
+
       const tds = tr.querySelectorAll("td, th");
       if (tds.length === 0) return;
       const obj = { _rowNumber: rIdx + 1 };
       headers.forEach((h, cIdx) => {
         obj[h] = tds[cIdx] ? tds[cIdx].textContent.trim() : "";
       });
+
+      // Abaikan baris kosong yang tidak memiliki data riil di luar kolom No / rowNumber
+      const hasAnyData = Object.entries(obj).some(([k, v]) => {
+        if (k === "_rowNumber" || k.toLowerCase() === "no") return false;
+        return v !== null && v !== undefined && String(v).trim() !== "";
+      });
+      if (!hasAnyData) return;
+
       data.push(obj);
     });
 
@@ -218,23 +240,40 @@ export const readUploadedFileAsText = (file) => {
 /**
  * Standardized Import Result Alert
  */
-export const showImportResultAlert = ({ successCount, errors = [], entityName = "Data" }) => {
-  if (errors.length === 0 && successCount > 0) {
+export const showImportResultAlert = ({
+  successCount,
+  addedCount = 0,
+  updatedCount = 0,
+  errors = [],
+  entityName = "Data",
+}) => {
+  const totalSuccess = successCount ?? (addedCount + updatedCount);
+
+  let successMsg = `✓ ${totalSuccess} ${entityName} berhasil diproses.`;
+  if (updatedCount > 0 && addedCount > 0) {
+    successMsg = `✓ ${updatedCount} ${entityName} diperbarui & ${addedCount} data baru ditambahkan.`;
+  } else if (updatedCount > 0) {
+    successMsg = `✓ ${updatedCount} ${entityName} berhasil diperbarui.`;
+  } else if (addedCount > 0) {
+    successMsg = `✓ ${addedCount} ${entityName} baru berhasil ditambahkan.`;
+  }
+
+  if (errors.length === 0 && totalSuccess > 0) {
     Swal.fire({
       title: "Impor Berhasil!",
       html: `
         <div class="text-sm text-zinc-600 dark:text-zinc-400 space-y-2">
           <p class="font-semibold text-emerald-600 dark:text-emerald-400 text-base">
-            ✓ ${successCount} ${entityName} berhasil ditambahkan ke sistem.
+            ${successMsg}
           </p>
-          <p>Seluruh data baru telah diverifikasi dan siap ditampilkan.</p>
+          <p>Seluruh perubahan data telah diverifikasi dan siap ditampilkan.</p>
         </div>
       `,
       icon: "success",
       confirmButtonColor: "#10b981",
       confirmButtonText: "Selesai",
     });
-  } else if (successCount > 0 && errors.length > 0) {
+  } else if (totalSuccess > 0 && errors.length > 0) {
     const errorListHtml = errors
       .slice(0, 5)
       .map((err) => `<li class="text-xs text-rose-500 font-mono text-left">Baris ${err.row}: ${err.reason}</li>`)
@@ -245,7 +284,7 @@ export const showImportResultAlert = ({ successCount, errors = [], entityName = 
       html: `
         <div class="text-sm text-zinc-600 dark:text-zinc-400 space-y-3">
           <p class="text-emerald-600 dark:text-emerald-400 font-semibold">
-            ✓ ${successCount} ${entityName} berhasil diimpor.
+            ${successMsg}
           </p>
           <p class="text-rose-500 font-semibold text-xs">
             ⚠ ${errors.length} baris dilewati karena format tidak sesuai:
