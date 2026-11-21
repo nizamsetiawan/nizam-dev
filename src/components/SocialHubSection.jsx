@@ -69,7 +69,7 @@ const SocialHubSection = () => {
                 </p>
               </div>
 
-              <div className="pt-4 mt-2 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between text-xs font-semibold text-zinc-800 dark:text-zinc-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+              <div className={`pt-4 mt-2 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between text-xs font-semibold text-zinc-800 dark:text-zinc-200 transition-colors ${accent?.text || "text-zinc-700 dark:text-zinc-300"}`}>
                 <span>Kunjungi Profil</span>
                 <span>→</span>
               </div>

@@ -40,7 +40,7 @@ const getTagClass = (style, idx) => {
 };
 
 const CardProject = ({ Img, Title, Description, Link: ProjectLink, Github: GithubLink, TechStack, id }) => {
-  const { config } = usePortfolio();
+  const { config, accent } = usePortfolio();
   const tagStyle = config?.appearance?.skillTagStyle ?? "colorful";
 
   const handleLiveDemo = (e) => {
@@ -117,7 +117,7 @@ const CardProject = ({ Img, Title, Description, Link: ProjectLink, Github: Githu
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={handleLiveDemo}
-                className="inline-flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+                className={`inline-flex items-center gap-1.5 font-semibold ${accent?.text || "text-emerald-600 dark:text-emerald-400"} ${accent?.hoverText || "hover:text-emerald-700 dark:hover:text-emerald-300"} transition-colors`}
               >
                 <span>Demo Langsung</span>
                 <ExternalLink className="w-3.5 h-3.5" />

@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { MessageCircle, UserCircle2, Loader2, AlertCircle, Send, ImagePlus, X, Pin } from 'lucide-react';
 import { supabase } from '../supabase';
+import { usePortfolio } from '../context/PortfolioContext';
 
-const Comment = memo(({ comment, formatDate, isPinned = false }) => (
+const Comment = memo(({ comment, formatDate, isPinned = false, accent }) => (
     <div 
         className={`px-4 pt-4 pb-3 rounded-xl border transition-all ${
             isPinned 
-                ? 'bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/30' 
+                ? `${accent?.bgSubtle || 'bg-emerald-500/10'} ${accent?.border || 'border-emerald-500/30'}` 
                 : 'bg-zinc-50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700'
         }`}
     >
         {isPinned && (
-            <div className="flex items-center gap-1.5 mb-2 text-emerald-600 dark:text-emerald-400">
+            <div className={`flex items-center gap-1.5 mb-2 ${accent?.text || 'text-emerald-600 dark:text-emerald-400'}`}>
                 <Pin className="w-3.5 h-3.5" />
                 <span className="text-[11px] font-semibold uppercase tracking-wider">Catatan Disematkan</span>
             </div>
@@ -22,13 +23,13 @@ const Comment = memo(({ comment, formatDate, isPinned = false }) => (
                     src={comment.profile_image}
                     alt={`${comment.user_name}'s profile`}
                     className={`w-9 h-9 rounded-full object-cover border flex-shrink-0 ${
-                        isPinned ? 'border-emerald-500/50' : 'border-zinc-300 dark:border-zinc-700'
+                        isPinned ? (accent?.border || 'border-emerald-500/50') : 'border-zinc-300 dark:border-zinc-700'
                     }`}
                     loading="lazy"
                 />
             ) : (
                 <div className={`p-1.5 rounded-full text-zinc-500 dark:text-zinc-400 ${
-                    isPinned ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-zinc-200 dark:bg-zinc-800'
+                    isPinned ? `${accent?.bgSubtle || 'bg-emerald-500/20'} ${accent?.text || 'text-emerald-600 dark:text-emerald-400'}` : 'bg-zinc-200 dark:bg-zinc-800'
                 }`}>
                     <UserCircle2 className="w-5 h-5" />
                 </div>
@@ -40,7 +41,7 @@ const Comment = memo(({ comment, formatDate, isPinned = false }) => (
                             {comment.user_name}
                         </h4>
                         {isPinned && (
-                            <span className="px-2 py-0.5 text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/20">
+                            <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full border ${accent?.badge || 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'}`}>
                                 Penulis
                             </span>
                         )}
@@ -57,7 +58,7 @@ const Comment = memo(({ comment, formatDate, isPinned = false }) => (
     </div>
 ));
 
-const CommentForm = memo(({ onSubmit, isSubmitting, error }) => {
+const CommentForm = memo(({ onSubmit, isSubmitting, error, accent, buttonRadiusClass }) => {
     const [newComment, setNewComment] = useState('');
     const [userName, setUserName] = useState('');
     const [imagePreview, setImagePreview] = useState(null);
@@ -119,7 +120,7 @@ const CommentForm = memo(({ onSubmit, isSubmitting, error }) => {
                         onChange={(e) => setUserName(e.target.value)}
                         maxLength={25}
                         placeholder="Contoh: Budi Santoso"
-                        className="w-full px-3.5 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                        className="w-full px-3.5 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-zinc-800 dark:focus:border-zinc-200 transition-colors"
                         required
                     />
                 </div>
@@ -141,7 +142,7 @@ const CommentForm = memo(({ onSubmit, isSubmitting, error }) => {
                                 <img
                                     src={imagePreview}
                                     alt="Pratinjau"
-                                    className="w-8 h-8 rounded-full object-cover border border-emerald-500"
+                                    className={`w-8 h-8 rounded-full object-cover border ${accent?.border || 'border-zinc-400'}`}
                                 />
                                 <button
                                     type="button"
@@ -179,7 +180,7 @@ const CommentForm = memo(({ onSubmit, isSubmitting, error }) => {
                     maxLength={300}
                     onChange={handleTextareaChange}
                     placeholder="Tulis pesan, tanggapan, atau salam Anda di sini..."
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors resize-none min-h-[90px]"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-zinc-800 dark:focus:border-zinc-200 transition-colors resize-none min-h-[90px]"
                     required
                 />
             </div>
@@ -206,6 +207,7 @@ const CommentForm = memo(({ onSubmit, isSubmitting, error }) => {
 });
 
 const Komentar = () => {
+    const { accent, buttonRadiusClass, cardRadiusClass } = usePortfolio();
     const [comments, setComments] = useState([]);
     const [pinnedComment, setPinnedComment] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -341,7 +343,7 @@ const Komentar = () => {
         <div className="w-full space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-zinc-200 dark:border-zinc-800/80">
                 <div className="flex items-center gap-2">
-                    <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <MessageCircle className={`w-4 h-4 ${accent?.text || 'text-emerald-600 dark:text-emerald-400'}`} />
                     <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
                         Umpan Diskusi & Buku Tamu
                     </h3>
@@ -358,7 +360,13 @@ const Komentar = () => {
                 </div>
             )}
             
-            <CommentForm onSubmit={handleCommentSubmit} isSubmitting={isSubmitting} error={error} />
+            <CommentForm
+                onSubmit={handleCommentSubmit}
+                isSubmitting={isSubmitting}
+                error={error}
+                accent={accent}
+                buttonRadiusClass={buttonRadiusClass}
+            />
 
             <div className="space-y-3 max-h-[360px] overflow-y-auto pt-2 pr-1">
                 {pinnedComment && (
@@ -366,6 +374,7 @@ const Komentar = () => {
                         comment={pinnedComment} 
                         formatDate={formatDate}
                         isPinned={true}
+                        accent={accent}
                     />
                 )}
                 
@@ -381,6 +390,7 @@ const Komentar = () => {
                             comment={comment} 
                             formatDate={formatDate}
                             isPinned={false}
+                            accent={accent}
                         />
                     ))
                 )}
