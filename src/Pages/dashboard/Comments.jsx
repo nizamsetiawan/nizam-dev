@@ -111,7 +111,7 @@ export default function Comments() {
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-8 w-full pb-10">
       <div>
         <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
           Moderasi Buku Tamu & Komentar

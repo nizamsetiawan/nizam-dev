@@ -390,7 +390,7 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         {/* Modern Topbar Header (Desktop & Mobile) */}
         <header className="h-14 shrink-0 px-4 sm:px-6 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md flex items-center justify-between gap-4 z-10">
-          {/* Left: Mobile Toggle & Desktop Collapse Toggle & Breadcrumbs */}
+          {/* Left: Mobile Toggle & Breadcrumbs */}
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             {/* Mobile Drawer Hamburger */}
             <button
@@ -398,15 +398,6 @@ export default function Dashboard() {
               className="lg:hidden p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
             >
               <Menu className="w-4 h-4" />
-            </button>
-
-            {/* Desktop Collapse Toggle (> / <) Button */}
-            <button
-              onClick={toggleSidebarCollapse}
-              className="hidden lg:flex items-center justify-center p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors shadow-2xs"
-              title={isCollapsed ? "Perluas Menu Sidebar (>)" : "Ciutkan Menu Sidebar (<)"}
-            >
-              {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
             </button>
 
             {/* Breadcrumbs */}
@@ -423,23 +414,16 @@ export default function Dashboard() {
           </div>
 
           {/* Right: Quick Actions */}
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            {/* Live Indicator Pill */}
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[11px] font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Realtime Sinkron</span>
-            </div>
-
-            {/* View Live Website Button */}
+          <div className="flex items-center gap-2">
+            {/* View Live Website Button (Icon Only) */}
             <a
               href="/"
               target="_blank"
               rel="noopener noreferrer"
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 ${buttonRadiusClass} bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-all shadow-xs`}
-              title="Buka beranda situs di tab baru"
+              className={`p-2 ${buttonRadiusClass} bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-all shadow-xs`}
+              title="Lihat Situs Publik (Buka di tab baru)"
             >
-              <span>Lihat Situs</span>
-              <ExternalLink className="w-3.5 h-3.5" />
+              <ExternalLink className="w-4 h-4" />
             </a>
 
             {/* Dark / Light Toggle */}
@@ -448,7 +432,7 @@ export default function Dashboard() {
               className={`p-2 ${buttonRadiusClass} bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors`}
               title="Ganti Tema Gelap / Terang"
             >
-              {theme === "dark" ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-zinc-700" />}
+              {theme === "dark" ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-zinc-700" />}
             </button>
           </div>
         </header>

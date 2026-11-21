@@ -222,7 +222,7 @@ export default function Appearance() {
   };
 
   return (
-    <div className="space-y-10 max-w-5xl">
+    <div className="space-y-10 w-full pb-10">
       {/* Header */}
       <div>
         <div className="flex items-center gap-2">

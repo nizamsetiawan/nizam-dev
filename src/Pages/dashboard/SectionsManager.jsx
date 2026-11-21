@@ -400,7 +400,7 @@ export default function SectionsManager() {
   }, [elements]);
 
   return (
-    <div className="space-y-8 max-w-5xl pb-10">
+    <div className="space-y-8 w-full pb-10">
       {/* Header with Compact Mini Badges */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>

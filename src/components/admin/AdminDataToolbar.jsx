@@ -51,25 +51,26 @@ export default function AdminDataToolbar({
           {/* Custom actions slot if any */}
           {customActions}
 
-          {/* Download Excel */}
+          {/* Download Excel (Icon Only) */}
           {onDownloadExcel && (
             <button
               onClick={onDownloadExcel}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 ${buttonRadiusClass} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold ${accent.text} hover:opacity-80 transition-all shadow-xs`}
-              title="Unduh format tabel Excel (.xls) ber-header & No"
+              className={`p-2 ${buttonRadiusClass} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold ${accent.text} hover:opacity-80 transition-all shadow-xs`}
+              title="Ekspor Data ke Berkas Excel (.xls)"
+              aria-label="Ekspor Excel"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Ekspor Excel</span>
-              <span className="sm:hidden">Excel</span>
+              <Download className="w-4 h-4" />
             </button>
           )}
 
-          {/* Import Excel */}
+          {/* Import Excel (Icon Only) */}
           {onUploadExcel && (
-            <label className={`inline-flex items-center gap-1.5 px-3 py-2 ${buttonRadiusClass} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white cursor-pointer transition-all shadow-xs`}>
-              <Upload className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Impor Excel</span>
-              <span className="sm:hidden">Impor</span>
+            <label
+              className={`p-2 ${buttonRadiusClass} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white cursor-pointer transition-all shadow-xs`}
+              title="Impor Data dari Berkas Excel (.xls, .xlsx)"
+              aria-label="Impor Excel"
+            >
+              <Upload className="w-4 h-4" />
               <input
                 type="file"
                 accept=".xls, .xlsx, .csv"

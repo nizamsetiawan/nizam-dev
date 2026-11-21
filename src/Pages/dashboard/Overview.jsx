@@ -85,7 +85,7 @@ export default function Overview() {
   };
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-8 w-full pb-10">
       {/* Top Welcome Banner */}
       <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

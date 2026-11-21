@@ -589,7 +589,7 @@ export default function Projects() {
   const withGithub = projects.filter((p) => p.Github && p.Github !== "#").length;
 
   return (
-    <div className="space-y-6 max-w-6xl pb-10">
+    <div className="space-y-6 w-full pb-10">
       {/* Header with Compact Mini Badges */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>

@@ -281,14 +281,14 @@ export default function ProfileHero() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl pb-10">
+    <div className="space-y-6 w-full pb-10">
       {/* Top Header with Save Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
             Kustomisasi Profil &amp; Hero
           </h1>
-          <p className="text-xs sm:text-sm text-zinc-500 mt-1">
+          <p className="text-xs sm:text-sm text-zinc-500 mt-0.5">
             Ubah foto avatar profil, nama lengkap, headline hero, lencana status ketersediaan kerja, dan metrik capaian.
           </p>
         </div>
@@ -296,10 +296,10 @@ export default function ProfileHero() {
         <button
           type="button"
           onClick={handleSubmit}
-          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl ${accent.bg} text-white font-semibold text-xs sm:text-sm hover:opacity-90 transition-all shadow-sm active:scale-95 shrink-0 self-start sm:self-auto`}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 ${buttonRadiusClass} ${accent.bg} text-white font-medium text-xs hover:opacity-90 transition-all shadow-xs active:scale-95 shrink-0 self-start sm:self-auto`}
         >
-          <Save className="w-4 h-4" />
-          <span>Simpan Perubahan</span>
+          <Save className="w-3.5 h-3.5" />
+          <span>Simpan</span>
         </button>
       </div>
 
@@ -765,17 +765,6 @@ export default function ProfileHero() {
               />
             </div>
           </div>
-        </div>
-
-        {/* Tombol Simpan */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl ${accent.bg} text-white font-semibold text-sm hover:opacity-90 transition-all shadow-md active:scale-95`}
-          >
-            <Save className="w-4 h-4" />
-            <span>Simpan Perubahan Profil & Hero</span>
-          </button>
         </div>
       </form>
     </div>

@@ -79,9 +79,9 @@ export default function AboutBio() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl pb-10">
+    <div className="space-y-6 w-full pb-10">
       {/* Header with Top Action Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
             <div className={`p-2 rounded-xl ${accent.bgSubtle} ${accent.text}`}>
@@ -91,7 +91,7 @@ export default function AboutBio() {
               Tentang &amp; Bio Narasi
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-zinc-500 mt-1">
+          <p className="text-xs sm:text-sm text-zinc-500 mt-0.5">
             Edit paragraf bio narasi, avatar profil, dan tiga pilar prinsip rekayasa yang tampil di halaman Tentang.
           </p>
         </div>
@@ -99,10 +99,10 @@ export default function AboutBio() {
         <button
           type="button"
           onClick={handleSubmit}
-          className={`inline-flex items-center gap-2 px-5 py-2.5 ${buttonRadiusClass} ${accent.bg} text-white font-semibold text-xs sm:text-sm hover:opacity-90 transition-all shadow-sm active:scale-95 shrink-0 self-start sm:self-auto`}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 ${buttonRadiusClass} ${accent.bg} text-white font-medium text-xs hover:opacity-90 transition-all shadow-xs active:scale-95 shrink-0 self-start sm:self-auto`}
         >
-          <Save className="w-4 h-4" />
-          <span>Simpan Perubahan</span>
+          <Save className="w-3.5 h-3.5" />
+          <span>Simpan</span>
         </button>
       </div>
 
@@ -265,17 +265,6 @@ export default function AboutBio() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Tombol Simpan Bawah */}
-        <div className="flex justify-end pt-2">
-          <button
-            type="submit"
-            className={`inline-flex items-center gap-2 px-6 py-3 ${buttonRadiusClass} ${accent.bg} text-white font-semibold text-xs sm:text-sm hover:opacity-90 transition-all shadow-md active:scale-95`}
-          >
-            <Save className="w-4 h-4" />
-            <span>Simpan Tentang &amp; Bio</span>
-          </button>
         </div>
       </form>
     </div>
