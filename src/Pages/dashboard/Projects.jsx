@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabase";
+import { broadcastRealtimeEvent } from "../../utils/realtimeSync";
 import {
   Plus,
   Trash2,
@@ -350,6 +351,7 @@ export default function Projects() {
 
       setShowCreate(false);
       fetchProjects();
+      broadcastRealtimeEvent("PROJECTS_UPDATED");
 
       Swal.fire({
         title: "Proyek Ditambahkan!",
@@ -400,6 +402,7 @@ export default function Projects() {
 
       setEditProject(null);
       fetchProjects();
+      broadcastRealtimeEvent("PROJECTS_UPDATED");
 
       Swal.fire({
         title: "Proyek Diperbarui!",
@@ -435,6 +438,7 @@ export default function Projects() {
       if (result.isConfirmed) {
         await supabase.from("projects").delete().eq("id", id);
         fetchProjects();
+        broadcastRealtimeEvent("PROJECTS_UPDATED");
       }
     });
   };
@@ -539,7 +543,7 @@ export default function Projects() {
         }
 
         fetchProjects();
-        window.dispatchEvent(new Event("portfolioDataUpdated"));
+        broadcastRealtimeEvent("PROJECTS_UPDATED");
       }
 
       showImportResultAlert({

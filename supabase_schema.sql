@@ -77,8 +77,38 @@ ON public.portfolio_comments FOR SELECT USING (true);
 CREATE POLICY "Allow public insert/update/delete portfolio_comments" 
 ON public.portfolio_comments FOR ALL USING (true);
 
--- Aktifkan Realtime untuk tabel komentar
-ALTER PUBLICATION supabase_realtime ADD TABLE public.portfolio_comments;
+-- Aktifkan Realtime untuk tabel Supabase (Settings, Projects, Certificates, Comments)
+-- Memungkinkan perubahan di admin langsung tampil di halaman pengunjung secara otomatis tanpa reload
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'portfolio_settings'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.portfolio_settings;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'projects'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.projects;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'certificates'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.certificates;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'portfolio_comments'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.portfolio_comments;
+  END IF;
+END $$;
 
 
 -- 5. TABEL LOG AKSES PENGUNJUNG (Visitor Analytics)

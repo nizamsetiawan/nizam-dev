@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabase";
 import { Award, Upload, Trash2, ImageIcon } from "lucide-react";
+import { broadcastRealtimeEvent } from "../../utils/realtimeSync";
 import Swal from "sweetalert2";
 
 export default function Certificates() {
@@ -76,6 +77,7 @@ export default function Certificates() {
       setFile(null);
       setPreview(null);
       fetchCerts();
+      broadcastRealtimeEvent("CERTS_UPDATED");
 
       Swal.fire({
         title: "Sertifikat Berhasil Diunggah!",
@@ -111,6 +113,7 @@ export default function Certificates() {
       if (result.isConfirmed) {
         await supabase.from("certificates").delete().eq("id", id);
         fetchCerts();
+        broadcastRealtimeEvent("CERTS_UPDATED");
         Swal.fire({
           title: "Sertifikat Dihapus",
           icon: "success",

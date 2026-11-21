@@ -133,6 +133,60 @@ const Portofolio = () => {
 
   useEffect(() => {
     fetchData();
+
+    // 1. Supabase Realtime WebSocket (Memantau tambah/edit/hapus proyek & sertifikat secara global)
+    const realtimeChannel = supabase
+      .channel("public_projects_certificates_realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "projects" },
+        () => {
+          fetchData();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "certificates" },
+        () => {
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    // 2. BroadcastChannel (Sinkronisasi instan antar-tab lokal 0ms)
+    let bc;
+    if (typeof BroadcastChannel !== "undefined") {
+      try {
+        bc = new BroadcastChannel("portfolio_realtime_sync");
+        bc.onmessage = (event) => {
+          if (
+            event.data?.type === "PROJECTS_UPDATED" ||
+            event.data?.type === "CERTS_UPDATED" ||
+            event.data?.type === "DATA_UPDATED"
+          ) {
+            fetchData();
+          }
+        };
+      } catch (e) {}
+    }
+
+    // 3. Event Listener lokal
+    const handleDataUpdated = () => fetchData();
+    window.addEventListener("portfolioDataUpdated", handleDataUpdated);
+
+    const handleStorageChange = (e) => {
+      if (e.key === "projects" || e.key === "certificates") {
+        fetchData();
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      supabase.removeChannel(realtimeChannel);
+      if (bc) bc.close();
+      window.removeEventListener("portfolioDataUpdated", handleDataUpdated);
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, [fetchData]);
 
   const visibleProjects = showAllProjects ? projects : projects.slice(0, INITIAL_PROJECTS);

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "../supabase";
+import { broadcastRealtimeEvent } from "../utils/realtimeSync";
 
 const DEFAULT_CONFIG = {
   profile: {
@@ -312,6 +313,22 @@ export const PortfolioProvider = ({ children }) => {
   }, [config?.profile?.initials, config?.profile?.name, config?.profile?.role]);
 
   useEffect(() => {
+    const mergeConfig = (incomingConfig) => {
+      if (!incomingConfig || typeof incomingConfig !== "object") return;
+      setConfig((prev) => {
+        const merged = {
+          ...prev,
+          ...incomingConfig,
+          sections: { ...prev.sections, ...(incomingConfig.sections || {}) },
+          elements: { ...prev.elements, ...(incomingConfig.elements || {}) },
+          appearance: { ...prev.appearance, ...(incomingConfig.appearance || {}) },
+        };
+        localStorage.setItem("portfolio_dynamic_config_id", JSON.stringify(merged));
+        return merged;
+      });
+    };
+
+    // 1. Initial fetch from Supabase
     const loadFromSupabase = async () => {
       try {
         const { data } = await supabase
@@ -320,17 +337,7 @@ export const PortfolioProvider = ({ children }) => {
           .single();
 
         if (data && data.config) {
-          setConfig((prev) => {
-            const merged = {
-              ...prev,
-              ...data.config,
-              sections: { ...prev.sections, ...(data.config.sections || {}) },
-              elements: { ...prev.elements, ...(data.config.elements || {}) },
-              appearance: { ...prev.appearance, ...(data.config.appearance || {}) },
-            };
-            localStorage.setItem("portfolio_dynamic_config_id", JSON.stringify(merged));
-            return merged;
-          });
+          mergeConfig(data.config);
         }
       } catch (err) {
         // Fallback to local storage
@@ -338,12 +345,73 @@ export const PortfolioProvider = ({ children }) => {
     };
 
     loadFromSupabase();
+
+    // 2. Supabase Realtime WebSocket (Memantau perubahan database Supabase secara global untuk semua pengunjung)
+    const realtimeChannel = supabase
+      .channel("public_portfolio_settings_realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "portfolio_settings",
+        },
+        (payload) => {
+          if (payload?.new && payload.new.config) {
+            mergeConfig(payload.new.config);
+          }
+        }
+      )
+      .subscribe();
+
+    // 3. BroadcastChannel (Sinkronisasi instan 0ms antar-tab browser di perangkat lokal admin & visitor)
+    let bc;
+    if (typeof BroadcastChannel !== "undefined") {
+      try {
+        bc = new BroadcastChannel("portfolio_realtime_sync");
+        bc.onmessage = (event) => {
+          if (event.data?.type === "CONFIG_UPDATED" && event.data?.config) {
+            mergeConfig(event.data.config);
+          }
+        };
+      } catch (e) {}
+    }
+
+    // 4. Fallback Cross-Tab Storage Event
+    const handleStorageChange = (e) => {
+      if (e.key === "portfolio_dynamic_config_id" && e.newValue) {
+        try {
+          mergeConfig(JSON.parse(e.newValue));
+        } catch (err) {}
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
+    // 5. Custom Event di window yang sama
+    const handleConfigEvent = () => {
+      try {
+        const saved = localStorage.getItem("portfolio_dynamic_config_id");
+        if (saved) {
+          mergeConfig(JSON.parse(saved));
+        }
+      } catch (err) {}
+    };
+    window.addEventListener("portfolioConfigUpdated", handleConfigEvent);
+
+    return () => {
+      supabase.removeChannel(realtimeChannel);
+      if (bc) bc.close();
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("portfolioConfigUpdated", handleConfigEvent);
+    };
   }, []);
 
   const updateConfig = async (newConfig) => {
     setConfig(newConfig);
     localStorage.setItem("portfolio_dynamic_config_id", JSON.stringify(newConfig));
-    window.dispatchEvent(new Event("portfolioConfigUpdated"));
+
+    // Siarkan pembaruan secara instan ke tab pengunjung di browser yang sama
+    broadcastRealtimeEvent("CONFIG_UPDATED", newConfig);
 
     try {
       await supabase.from("portfolio_settings").upsert({
@@ -352,7 +420,7 @@ export const PortfolioProvider = ({ children }) => {
         updated_at: new Date().toISOString(),
       });
     } catch (err) {
-      // Graceful fallback
+      console.warn("Gagal menyimpan ke Supabase settings:", err);
     }
   };
 
