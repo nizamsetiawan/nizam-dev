@@ -160,12 +160,23 @@ const ProjectForm = ({
   });
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(initial?.Img || null);
+  const [isDragging, setIsDragging] = useState(false);
+  const { accent } = usePortfolio();
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const handleFileChange = (e) => {
     const f = e.target.files[0];
     if (!f) return;
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const f = e.dataTransfer.files?.[0];
+    if (!f || !f.type.startsWith("image/")) return;
     setFile(f);
     setPreview(URL.createObjectURL(f));
   };
@@ -231,7 +242,20 @@ const ProjectForm = ({
           <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
             Project Screenshot / Banner
           </label>
-          <label className="flex items-center gap-4 w-full bg-zinc-50 dark:bg-zinc-800 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-4 cursor-pointer hover:border-emerald-500 transition-all">
+          <label
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              setIsDragging(false);
+            }}
+            onDrop={handleDrop}
+            className={`flex items-center gap-4 w-full bg-zinc-50 dark:bg-zinc-800 border-2 border-dashed rounded-xl px-4 py-4 cursor-pointer transition-all ${
+              isDragging ? `${accent?.border || "border-emerald-500"} ${accent?.bgSubtle || "bg-emerald-500/10"}` : "border-zinc-300 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500"
+            }`}
+          >
             {preview ? (
               <img
                 src={preview}
@@ -245,10 +269,10 @@ const ProjectForm = ({
             )}
             <div>
               <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                {preview ? "Change screenshot" : "Click to select screenshot"}
+                {preview ? "Ganti tangkapan layar (Drag & Drop didukung)" : "Tarik & Lepas gambar atau klik di sini"}
               </p>
               <p className="text-[11px] text-zinc-500 mt-0.5">
-                PNG, JPG, WEBP supported
+                PNG, JPG, WEBP didukung
               </p>
             </div>
             <input
@@ -272,7 +296,7 @@ const ProjectForm = ({
         <button
           type="submit"
           disabled={uploading}
-          className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 text-white font-semibold text-xs hover:bg-emerald-500 transition-all shadow-sm disabled:opacity-50"
+          className={`inline-flex items-center gap-2 px-5 py-2 rounded-xl ${accent?.bg || "bg-emerald-600"} text-white font-semibold text-xs hover:opacity-90 transition-all shadow-sm disabled:opacity-50`}
         >
           {uploading ? "Menyimpan..." : submitLabel}
         </button>
@@ -522,7 +546,8 @@ export default function Projects() {
         const img = (row["Gambar_URL"] || row["Img"] || "").trim();
         const featuresRaw = row["Fitur_Unggulan"] || row["Features"] || "";
 
-        if (!title) {
+        if (!title || title.toLowerCase() === "judul_proyek" || title.toLowerCase() === "judul proyek") {
+          if (title.toLowerCase() === "judul_proyek" || title.toLowerCase() === "judul proyek") return;
           errors.push({ row: rowNumStr, reason: "Kolom 'Judul_Proyek' tidak boleh kosong." });
           return;
         }

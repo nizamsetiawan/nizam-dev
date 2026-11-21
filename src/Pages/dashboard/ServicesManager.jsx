@@ -150,7 +150,8 @@ export default function ServicesManager() {
         const description = (row["Deskripsi"] || row["Description"] || "").trim();
         const icon = (row["Nama_Ikon"] || row["Icon"] || "Layout").trim();
 
-        if (!title) {
+        if (!title || title.toLowerCase() === "judul_layanan") {
+          if (title.toLowerCase() === "judul_layanan") return;
           errors.push({ row: rowNumStr, reason: "Kolom 'Judul_Layanan' tidak boleh kosong." });
           return;
         }

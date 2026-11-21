@@ -165,7 +165,8 @@ export default function SkillsManager() {
         const description = (row["Deskripsi_Kategori"] || row["Description"] || "").trim();
         const skillsRaw = row["Daftar_Keahlian"] || row["Skills"] || "";
 
-        if (!category) {
+        if (!category || category.toLowerCase() === "nama_kategori") {
+          if (category.toLowerCase() === "nama_kategori") return;
           errors.push({ row: rowNumStr, reason: "Kolom 'Nama_Kategori' tidak boleh kosong." });
           return;
         }

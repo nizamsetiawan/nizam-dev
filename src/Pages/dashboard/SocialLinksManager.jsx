@@ -163,11 +163,13 @@ export default function SocialLinksManager() {
         const description = (row["Deskripsi"] || row["Description"] || "").trim();
         const icon = (row["Nama_Ikon"] || row["Icon"] || "Globe").trim();
 
-        if (!platform) {
+        if (!platform || platform.toLowerCase() === "nama_platform") {
+          if (platform.toLowerCase() === "nama_platform") return;
           errors.push({ row: rowNumStr, reason: "Kolom 'Nama_Platform' tidak boleh kosong." });
           return;
         }
-        if (!url) {
+        if (!url || url.toLowerCase() === "tautan_url") {
+          if (url.toLowerCase() === "tautan_url") return;
           errors.push({ row: rowNumStr, reason: "Kolom 'Tautan_URL' tidak boleh kosong." });
           return;
         }

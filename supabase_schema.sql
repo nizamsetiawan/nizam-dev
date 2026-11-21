@@ -194,5 +194,16 @@ USING (bucket_id = 'resume-files');
 CREATE POLICY "Public Upload for resume-files" 
 ON storage.objects FOR INSERT 
 WITH CHECK (bucket_id = 'resume-files');
-ON storage.objects FOR INSERT 
-WITH CHECK (bucket_id = 'profile-images');
+
+-- Mengaktifkan RLS untuk tabel public.voters jika ada (untuk menghilangkan peringatan PostgREST)
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'voters') THEN
+    EXECUTE 'ALTER TABLE public.voters ENABLE ROW LEVEL SECURITY;';
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies WHERE tablename = 'voters' AND policyname = 'Public Read voters'
+    ) THEN
+      EXECUTE 'CREATE POLICY "Public Read voters" ON public.voters FOR SELECT USING (true);';
+    END IF;
+  END IF;
+END $$;

@@ -5,7 +5,7 @@ import { usePortfolio } from "../context/PortfolioContext";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
-  const { config } = usePortfolio();
+  const { config, containerClass } = usePortfolio();
   const profile = config?.profile || {};
   const footer = config?.footer || {};
 
@@ -15,7 +15,7 @@ const Footer = () => {
 
   return (
     <footer className="border-t border-zinc-200 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-950/60 py-10 px-4 sm:px-6 lg:px-8 transition-colors">
-      <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500 dark:text-zinc-500">
+      <div className={`${containerClass} mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500 dark:text-zinc-500`}>
         <div className="flex flex-col sm:flex-row items-center gap-2 text-center sm:text-left">
           <span className="font-semibold text-zinc-800 dark:text-zinc-300">{profile.name || "Nizam Setiawan"}</span>
           <span className="hidden sm:inline">•</span>

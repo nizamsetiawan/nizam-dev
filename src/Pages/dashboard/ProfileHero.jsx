@@ -9,6 +9,7 @@ export default function ProfileHero() {
 
   const resumeInputRef = useRef(null);
   const [resumeUploading, setResumeUploading] = useState(false);
+  const [isDraggingResume, setIsDraggingResume] = useState(false);
 
   const [formData, setFormData] = useState({
     name: config?.profile?.name || "",
@@ -92,12 +93,11 @@ export default function ProfileHero() {
     reader.readAsDataURL(file);
   };
 
-  // ── Upload PDF Resume ke Supabase Storage ──────────────────────────────
-  const handleResumeUpload = async (e) => {
-    const file = e.target.files[0];
+  // ── Upload PDF Resume ke Supabase Storage (Mendukung Klik & Drag-and-Drop) ──
+  const handleResumeFile = async (file) => {
     if (!file) return;
 
-    if (file.type !== "application/pdf") {
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
       Swal.fire({ title: "Format Tidak Valid", text: "Hanya berkas PDF yang diizinkan.", icon: "warning" });
       return;
     }
@@ -137,6 +137,11 @@ export default function ProfileHero() {
       setResumeUploading(false);
       if (resumeInputRef.current) resumeInputRef.current.value = "";
     }
+  };
+
+  const handleResumeUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) handleResumeFile(file);
   };
 
   const handleSubmit = (e) => {
@@ -372,9 +377,27 @@ export default function ProfileHero() {
                 <div className="text-xs text-zinc-500 italic px-1">Belum ada resume yang diunggah.</div>
               )}
 
-              {/* Upload area */}
+              {/* Upload area with drag & drop */}
               <div
-                className="flex items-center gap-2 mt-1 p-3 rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500 transition-colors cursor-pointer bg-zinc-50/50 dark:bg-zinc-900/40 group"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDraggingResume(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  setIsDraggingResume(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDraggingResume(false);
+                  const f = e.dataTransfer.files?.[0];
+                  if (f) handleResumeFile(f);
+                }}
+                className={`flex items-center gap-2 mt-1 p-3 rounded-xl border-2 border-dashed transition-colors cursor-pointer group ${
+                  isDraggingResume
+                    ? `${accent.border} ${accent.bgSubtle}`
+                    : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500 bg-zinc-50/50 dark:bg-zinc-900/40"
+                }`}
                 onClick={() => !resumeUploading && resumeInputRef.current?.click()}
               >
                 <input

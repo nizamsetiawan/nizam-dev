@@ -57,3 +57,16 @@ BEGIN
     CREATE POLICY "Public Upload for resume-files" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'resume-files');
   END IF;
 END $$;
+
+-- 6. Mengatasi Peringatan Keamanan RLS untuk tabel public.voters (Jika Ada di Database)
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'voters') THEN
+    EXECUTE 'ALTER TABLE public.voters ENABLE ROW LEVEL SECURITY;';
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies WHERE tablename = 'voters' AND policyname = 'Public Read voters'
+    ) THEN
+      EXECUTE 'CREATE POLICY "Public Read voters" ON public.voters FOR SELECT USING (true);';
+    END IF;
+  END IF;
+END $$;

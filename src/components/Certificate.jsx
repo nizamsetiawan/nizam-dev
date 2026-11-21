@@ -1,14 +1,16 @@
 import React, { useState } from "react";
 import { ZoomIn, X } from "lucide-react";
+import { usePortfolio } from "../context/PortfolioContext";
 
 const Certificate = ({ ImgSertif }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { cardRadiusClass } = usePortfolio();
 
   return (
     <>
       <div
         onClick={() => setIsOpen(true)}
-        className="group relative cursor-pointer overflow-hidden rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 shadow-sm"
+        className={`group relative cursor-pointer overflow-hidden ${cardRadiusClass} bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 shadow-sm`}
       >
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-950">
           <img

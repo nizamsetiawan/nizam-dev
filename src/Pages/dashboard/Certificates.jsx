@@ -1,15 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "../../supabase";
-import { Award, Upload, Trash2, ImageIcon } from "lucide-react";
+import { Award, Upload, Trash2, ImageIcon, X, CheckCircle2, Loader2, Plus } from "lucide-react";
 import { broadcastRealtimeEvent } from "../../utils/realtimeSync";
+import { usePortfolio } from "../../context/PortfolioContext";
 import Swal from "sweetalert2";
 
 export default function Certificates() {
+  const { accent, cardRadiusClass, buttonRadiusClass } = usePortfolio();
   const [certs, setCerts] = useState([]);
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]); // Array of { id, file, preview }
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
 
   const fetchCerts = async () => {
     setLoading(true);
@@ -30,73 +34,128 @@ export default function Certificates() {
     fetchCerts();
   }, []);
 
-  const handleFileChange = (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
+  const handleFiles = (incomingFiles) => {
+    if (!incomingFiles || incomingFiles.length === 0) return;
 
-    if (f.size > 5 * 1024 * 1024) {
-      Swal.fire({
-        title: "Ukuran Berkas Terlalu Besar",
-        text: "Maksimal ukuran gambar sertifikat adalah 5MB.",
-        icon: "warning",
-        confirmButtonColor: "#10b981",
+    const validNewItems = [];
+    const oversized = [];
+
+    Array.from(incomingFiles).forEach((f) => {
+      if (!f.type.startsWith("image/")) return;
+
+      if (f.size > 10 * 1024 * 1024) {
+        oversized.push(f.name);
+        return;
+      }
+
+      validNewItems.push({
+        id: "cert-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        file: f,
+        preview: URL.createObjectURL(f),
       });
-      return;
+    });
+
+    if (oversized.length > 0) {
+      Swal.fire({
+        title: "Ukuran Gambar Terlalu Besar",
+        text: `${oversized.length} berkas dilewati karena melebihi batas 10MB: ${oversized.slice(0, 3).join(", ")}`,
+        icon: "warning",
+      });
     }
 
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
+    if (validNewItems.length > 0) {
+      setSelectedFiles((prev) => [...prev, ...validNewItems]);
+    }
   };
 
-  const handleUpload = async (e) => {
+  const handleRemoveSelected = (id) => {
+    setSelectedFiles((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target?.preview) URL.revokeObjectURL(target.preview);
+      return prev.filter((item) => item.id !== id);
+    });
+  };
+
+  const handleClearAll = () => {
+    selectedFiles.forEach((item) => {
+      if (item.preview) URL.revokeObjectURL(item.preview);
+    });
+    setSelectedFiles([]);
+  };
+
+  const handleUploadAll = async (e) => {
     e.preventDefault();
-    if (!file) return;
+    if (selectedFiles.length === 0) return;
 
     setUploading(true);
-    try {
-      const ext = file.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const filePath = `certificates/${fileName}`;
+    setUploadProgress(`0 / ${selectedFiles.length}`);
 
-      const { error: uploadError } = await supabase.storage
-        .from("certificate-images")
-        .upload(filePath, file);
+    let uploadedCount = 0;
+    const certRecords = [];
+    const errors = [];
 
-      if (uploadError) throw uploadError;
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const item = selectedFiles[i];
+      try {
+        const ext = item.file.name.split(".").pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const filePath = `certificates/${fileName}`;
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("certificate-images").getPublicUrl(filePath);
+        const { error: uploadError } = await supabase.storage
+          .from("certificate-images")
+          .upload(filePath, item.file, { upsert: true });
 
-      const { error: insertError } = await supabase
-        .from("certificates")
-        .insert([{ Img: publicUrl }]);
+        if (uploadError) throw uploadError;
 
-      if (insertError) throw insertError;
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("certificate-images").getPublicUrl(filePath);
 
-      setFile(null);
-      setPreview(null);
-      fetchCerts();
-      broadcastRealtimeEvent("CERTS_UPDATED");
-
-      Swal.fire({
-        title: "Sertifikat Berhasil Diunggah!",
-        text: "Sertifikat telah ditambahkan ke galeri kredensial Anda.",
-        icon: "success",
-        confirmButtonColor: "#10b981",
-        timer: 1800,
-        showConfirmButton: false,
-      });
-    } catch (err) {
-      Swal.fire({
-        title: "Gagal Mengunggah",
-        text: err.message || "Terjadi kesalahan saat mengunggah sertifikat.",
-        icon: "error",
-        confirmButtonColor: "#10b981",
-      });
-    } finally {
-      setUploading(false);
+        certRecords.push({ Img: publicUrl });
+        uploadedCount++;
+        setUploadProgress(`${uploadedCount} / ${selectedFiles.length}`);
+      } catch (err) {
+        errors.push({ name: item.file.name, error: err.message });
+      }
     }
+
+    if (certRecords.length > 0) {
+      try {
+        const { error: insertError } = await supabase
+          .from("certificates")
+          .insert(certRecords);
+
+        if (insertError) throw insertError;
+
+        handleClearAll();
+        fetchCerts();
+        broadcastRealtimeEvent("CERTS_UPDATED");
+
+        Swal.fire({
+          title: "Sertifikat Berhasil Diunggah!",
+          text: `${certRecords.length} berkas sertifikat baru telah ditambahkan ke galeri kredensial Anda.`,
+          icon: "success",
+          confirmButtonColor: accent.hex || "#10b981",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } catch (err) {
+        Swal.fire({
+          title: "Gagal Menyimpan ke Database",
+          text: err.message,
+          icon: "error",
+        });
+      }
+    } else if (errors.length > 0) {
+      Swal.fire({
+        title: "Gagal Mengunggah Berkas",
+        text: errors.map((e) => `${e.name}: ${e.error}`).join("\n"),
+        icon: "error",
+      });
+    }
+
+    setUploading(false);
+    setUploadProgress("");
   };
 
   const handleDelete = (id) => {
@@ -117,7 +176,7 @@ export default function Certificates() {
         Swal.fire({
           title: "Sertifikat Dihapus",
           icon: "success",
-          confirmButtonColor: "#10b981",
+          confirmButtonColor: accent.hex || "#10b981",
           timer: 1200,
           showConfirmButton: false,
         });
@@ -132,72 +191,153 @@ export default function Certificates() {
           Sertifikat &amp; Kredensial
         </h1>
         <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-          Unggah dan kelola sertifikat kursus, pelatihan, dan akreditasi profesional.
+          Unggah dan kelola sertifikat kursus, pelatihan, dan akreditasi profesional secara massal (Multi-upload &amp; Drag-and-drop).
         </p>
       </div>
 
-      {/* Upload Box */}
+      {/* Drag & Drop Multi-Upload Box */}
       <form
-        onSubmit={handleUpload}
-        className="p-6 rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 space-y-4 shadow-sm"
+        onSubmit={handleUploadAll}
+        className={`p-6 ${cardRadiusClass} bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 space-y-4 shadow-sm`}
       >
-        <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
-          Unggah Sertifikat Baru
-        </h2>
-
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <label className="flex-1 w-full flex items-center gap-4 bg-zinc-50 dark:bg-zinc-800 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-4 cursor-pointer hover:border-emerald-500 transition-all">
-            {preview ? (
-              <img
-                src={preview}
-                alt="preview"
-                className="h-16 w-24 object-cover rounded-lg border border-zinc-200 dark:border-zinc-700"
-              />
-            ) : (
-              <div className="w-24 h-16 rounded-lg bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center">
-                <ImageIcon className="w-5 h-5 text-zinc-400" />
-              </div>
-            )}
-            <div>
-              <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                {preview ? "Ganti gambar sertifikat" : "Pilih gambar sertifikat untuk diunggah"}
-              </p>
-              <p className="text-[11px] text-zinc-500 mt-0.5">
-                PNG, JPG, WEBP (Maks. 5MB)
-              </p>
-            </div>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-          </label>
-
-          <button
-            type="submit"
-            disabled={!file || uploading}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-emerald-600 text-white font-semibold text-xs sm:text-sm hover:bg-emerald-500 transition-colors shadow-sm disabled:opacity-40"
-          >
-            <Upload className="w-4 h-4" />
-            <span>{uploading ? "Mengunggah..." : "Unggah Sertifikat"}</span>
-          </button>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider flex items-center gap-2">
+            <Upload className={`w-4 h-4 ${accent.text}`} />
+            <span>Unggah Berkas Sertifikat (Multi-Upload)</span>
+          </h2>
+          {selectedFiles.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-xs text-rose-500 hover:underline"
+            >
+              Hapus Semua Pilihan ({selectedFiles.length})
+            </button>
+          )}
         </div>
+
+        {/* Dropzone */}
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            handleFiles(e.dataTransfer.files);
+          }}
+          onClick={() => fileInputRef.current?.click()}
+          className={`relative border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 ${
+            isDragging
+              ? `${accent.border} ${accent.bgSubtle} scale-[1.01]`
+              : "border-zinc-300 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500 bg-zinc-50/50 dark:bg-zinc-900/50"
+          }`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(e) => handleFiles(e.target.files)}
+            className="hidden"
+          />
+
+          <div className={`w-12 h-12 rounded-2xl ${accent.bgSubtle} ${accent.border} border flex items-center justify-center`}>
+            <ImageIcon className={`w-6 h-6 ${accent.text}`} />
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
+              Seret &amp; Taruh Berkas Gambar di Sini, atau <span className={`${accent.text} underline`}>Pilih Berkas</span>
+            </p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Mendukung banyak gambar sekaligus (PNG, JPG, WEBP, maks. 10MB per gambar)
+            </p>
+          </div>
+        </div>
+
+        {/* Selected Files Preview Grid */}
+        {selectedFiles.length > 0 && (
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+              <span>Berkas yang siap diunggah ({selectedFiles.length} berkas):</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+              {selectedFiles.map((item, idx) => (
+                <div
+                  key={item.id}
+                  className="relative group rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 aspect-[4/3] bg-zinc-100 dark:bg-zinc-800"
+                >
+                  <img
+                    src={item.preview}
+                    alt={item.file.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveSelected(item.id);
+                      }}
+                      className="p-1.5 rounded-full bg-rose-600 text-white hover:bg-rose-700 transition-colors shadow-lg"
+                      title="Batalkan berkas ini"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <span className="absolute bottom-1 left-1 right-1 px-1.5 py-0.5 rounded bg-black/60 text-[10px] text-white truncate font-mono">
+                    {item.file.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Submit Button */}
+        {selectedFiles.length > 0 && (
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={uploading}
+              className={`inline-flex items-center gap-2 px-6 py-3 ${buttonRadiusClass} ${accent.bg} text-white font-semibold text-xs sm:text-sm hover:opacity-90 transition-all shadow-md active:scale-95 disabled:opacity-50`}
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Mengunggah ({uploadProgress})...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  <span>Unggah {selectedFiles.length} Sertifikat Sekarang</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </form>
 
-      {/* Grid */}
+      {/* Grid of uploaded certs */}
       {loading ? (
         <div className="text-center py-12 text-sm text-zinc-500">
           Memuat daftar sertifikat...
         </div>
       ) : certs.length === 0 ? (
-        <div className="p-12 text-center bg-white dark:bg-zinc-900/40 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+        <div className={`p-12 text-center bg-white dark:bg-zinc-900/40 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800`}>
           <Award className="w-10 h-10 text-zinc-400 mx-auto mb-3 opacity-50" />
           <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
             Belum ada sertifikat yang diunggah.
           </p>
           <p className="text-xs text-zinc-500 mt-1">
-            Gunakan formulir di atas untuk menambahkan sertifikat pertama Anda.
+            Gunakan area unggah di atas untuk menambahkan sertifikat Anda.
           </p>
         </div>
       ) : (
@@ -205,25 +345,24 @@ export default function Certificates() {
           {certs.map((c) => (
             <div
               key={c.id}
-              className="group relative overflow-hidden rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm"
+              className={`group relative overflow-hidden ${cardRadiusClass} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm`}
             >
-              <div className="aspect-[4/3] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+              <div className="aspect-[4/3] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-950">
                 <img
                   src={c.Img}
                   alt="Sertifikat"
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   loading="lazy"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               </div>
-              <div className="p-2 flex justify-end bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800">
-                <button
-                  onClick={() => handleDelete(c.id)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 text-xs font-semibold transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Hapus</span>
-                </button>
-              </div>
+
+              <button
+                onClick={() => handleDelete(c.id)}
+                className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600/90 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-sm"
+                title="Hapus Sertifikat"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           ))}
         </div>

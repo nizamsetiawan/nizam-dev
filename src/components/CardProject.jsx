@@ -40,7 +40,7 @@ const getTagClass = (style, idx) => {
 };
 
 const CardProject = ({ Img, Title, Description, Link: ProjectLink, Github: GithubLink, TechStack, id }) => {
-  const { config, accent } = usePortfolio();
+  const { config, accent, cardRadiusClass } = usePortfolio();
   const tagStyle = config?.appearance?.skillTagStyle ?? "colorful";
 
   const handleLiveDemo = (e) => {
@@ -63,7 +63,7 @@ const CardProject = ({ Img, Title, Description, Link: ProjectLink, Github: Githu
   }
 
   return (
-    <div className="group relative flex flex-col h-full rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 overflow-hidden shadow-sm hover:shadow-lg dark:hover:shadow-black/50">
+    <div className={`group relative flex flex-col h-full ${cardRadiusClass} bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 overflow-hidden shadow-sm hover:shadow-lg dark:hover:shadow-black/50`}>
       {/* Project Thumbnail Image */}
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800/80">
         <img

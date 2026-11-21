@@ -158,6 +158,20 @@ export const parseCsvText = (text) => {
       obj[h] = row[idx] ?? "";
     });
 
+    // Abaikan jika baris ini menduplikasi header (misal No === "No")
+    const isHeaderRow =
+      (obj["No"] || obj["no"] || "").toString().trim().toLowerCase() === "no" ||
+      headers.every((h) => (obj[h] || "").toString().trim().toLowerCase() === h.trim().toLowerCase());
+    if (isHeaderRow) continue;
+
+    // Abaikan baris yang seluruh kolom datanya kosong
+    const hasAnyData = Object.entries(obj).some(([k, v]) => {
+      if (k === "_rowNumber" || k.toLowerCase() === "no") return false;
+      return v !== null && v !== undefined && String(v).trim() !== "";
+    });
+    if (!hasAnyData) continue;
+
+
     // Abaikan baris yang seluruh kolom datanya kosong
     const hasAnyData = Object.entries(obj).some(([k, v]) => {
       if (k === "_rowNumber" || k.toLowerCase() === "no") return false;
@@ -184,17 +198,42 @@ export const parseUploadedSpreadsheet = async (file) => {
     const table = doc.querySelector("table");
     if (!table) throw new Error("Format tabel tidak ditemukan di dalam berkas.");
 
-    const headers = [];
-    const ths = table.querySelectorAll("thead th, tr:first-child th, tr:first-child td");
-    ths.forEach((th) => {
-      headers.push(th.textContent.trim());
-    });
+    const thead = table.querySelector("thead");
+    let headerRow = null;
+    let dataRows = [];
+
+    if (thead && thead.querySelector("tr")) {
+      headerRow = thead.querySelector("tr");
+      const tbody = table.querySelector("tbody");
+      dataRows = tbody
+        ? Array.from(tbody.querySelectorAll("tr"))
+        : Array.from(table.querySelectorAll("tr")).filter((tr) => tr !== headerRow);
+    } else {
+      // Tidak ada thead terpisah: ambil semua baris tr yang valid (abaikan yang tersembunyi)
+      const allRows = Array.from(table.querySelectorAll("tr")).filter((tr) => {
+        const styleAttr = tr.getAttribute("style") || "";
+        return !(tr.style?.display === "none" || styleAttr.replace(/\s+/g, "").includes("display:none"));
+      });
+
+      if (allRows.length > 0) {
+        headerRow = allRows[0];
+        dataRows = allRows.slice(1);
+      }
+    }
+
+    if (!headerRow) throw new Error("Baris judul kolom (header) tidak ditemukan di dalam tabel.");
+
+    const headers = Array.from(headerRow.querySelectorAll("th, td")).map((th) => th.textContent.trim());
 
     const data = [];
-    const tbody = table.querySelector("tbody");
-    const trList = tbody ? Array.from(tbody.querySelectorAll("tr")) : Array.from(table.querySelectorAll("tr")).slice(1);
 
-    trList.forEach((tr, rIdx) => {
+    dataRows.forEach((tr, rIdx) => {
+      // Abaikan baris tersembunyi (cth. helper supportMisalignedColumns dari WPS Office/Excel)
+      const styleAttr = tr.getAttribute("style") || "";
+      if (tr.style?.display === "none" || styleAttr.replace(/\s+/g, "").includes("display:none")) {
+        return;
+      }
+
       // Abaikan baris tersembunyi (cth. helper supportMisalignedColumns dari WPS Office/Excel)
       const styleAttr = tr.getAttribute("style") || "";
       if (tr.style?.display === "none" || styleAttr.replace(/\s+/g, "").includes("display:none")) {
@@ -207,6 +246,23 @@ export const parseUploadedSpreadsheet = async (file) => {
       headers.forEach((h, cIdx) => {
         obj[h] = tds[cIdx] ? tds[cIdx].textContent.trim() : "";
       });
+
+      // Abaikan jika baris ini menduplikasi judul kolom / header
+      const isHeaderDuplicate =
+        (obj["No"] || obj["no"] || "").toString().trim().toLowerCase() === "no" ||
+        headers.every((h) => {
+          const val = (obj[h] || "").toString().trim().toLowerCase();
+          return val === h.toLowerCase() || val === "";
+        });
+      if (isHeaderDuplicate) return;
+
+      // Abaikan baris kosong yang tidak memiliki data riil di luar kolom No / rowNumber
+      const hasAnyData = Object.entries(obj).some(([k, v]) => {
+        if (k === "_rowNumber" || k.toLowerCase() === "no") return false;
+        return v !== null && v !== undefined && String(v).trim() !== "";
+      });
+      if (!hasAnyData) return;
+
 
       // Abaikan baris kosong yang tidak memiliki data riil di luar kolom No / rowNumber
       const hasAnyData = Object.entries(obj).some(([k, v]) => {

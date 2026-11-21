@@ -48,7 +48,7 @@ const ContactPage = () => {
         title: "Formulir Belum Lengkap",
         text: "Harap isi semua kolom sebelum mengirimkan pesan.",
         icon: "warning",
-        confirmButtonColor: "#10b981",
+        confirmButtonColor: accent.hex || "#10b981",
       });
       return;
     }
@@ -177,7 +177,7 @@ const ContactPage = () => {
                         onChange={handleChange}
                         placeholder="cth. Sarah Jenkins"
                         required
-                        className={`w-full px-4 py-2.5 text-sm ${cardRadiusClass} bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 transition-colors`}
+                        className={`w-full px-4 py-2.5 text-sm ${cardRadiusClass} bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500 transition-colors`}
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -191,7 +191,7 @@ const ContactPage = () => {
                         onChange={handleChange}
                         placeholder="cth. sarah@company.com"
                         required
-                        className={`w-full px-4 py-2.5 text-sm ${cardRadiusClass} bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 transition-colors`}
+                        className={`w-full px-4 py-2.5 text-sm ${cardRadiusClass} bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500 transition-colors`}
                       />
                     </div>
                   </div>
@@ -207,7 +207,7 @@ const ContactPage = () => {
                       onChange={handleChange}
                       placeholder="Jelaskan kebutuhan proyek, tawaran posisi, atau pertanyaan Anda..."
                       required
-                      className={`w-full px-4 py-2.5 text-sm ${cardRadiusClass} bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 transition-colors resize-none`}
+                      className={`w-full px-4 py-2.5 text-sm ${cardRadiusClass} bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500 transition-colors resize-none`}
                     ></textarea>
                   </div>
 

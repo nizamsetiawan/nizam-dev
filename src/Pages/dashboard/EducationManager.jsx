@@ -203,11 +203,13 @@ export default function EducationManager() {
         const description = (row["Deskripsi"] || row["Description"] || "").trim();
         const grade = (row["Predikat_Nilai"] || row["Grade"] || "").trim();
 
-        if (!degree) {
+        if (!degree || degree.toLowerCase() === "gelar_jurusan") {
+          if (degree.toLowerCase() === "gelar_jurusan") return;
           errors.push({ row: rowNumStr, reason: "Kolom 'Gelar_Jurusan' tidak boleh kosong." });
           return;
         }
-        if (!institution) {
+        if (!institution || institution.toLowerCase() === "institusi_universitas") {
+          if (institution.toLowerCase() === "institusi_universitas") return;
           errors.push({ row: rowNumStr, reason: "Kolom 'Institusi_Universitas' tidak boleh kosong." });
           return;
         }

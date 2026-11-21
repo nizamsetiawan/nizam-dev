@@ -147,11 +147,13 @@ export default function FaqManager() {
         const question = (row["Pertanyaan"] || row["Question"] || row["pertanyaan"] || "").trim();
         const answer = (row["Jawaban"] || row["Answer"] || row["jawaban"] || "").trim();
 
-        if (!question) {
+        if (!question || question.toLowerCase() === "pertanyaan") {
+          if (question.toLowerCase() === "pertanyaan") return;
           errors.push({ row: rowNumStr, reason: "Kolom 'Pertanyaan' tidak boleh kosong." });
           return;
         }
-        if (!answer) {
+        if (!answer || answer.toLowerCase() === "jawaban") {
+          if (answer.toLowerCase() === "jawaban") return;
           errors.push({ row: rowNumStr, reason: "Kolom 'Jawaban' tidak boleh kosong." });
           return;
         }

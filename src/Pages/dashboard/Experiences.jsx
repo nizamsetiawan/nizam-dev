@@ -255,11 +255,13 @@ export default function Experiences() {
         const description = (row["Deskripsi"] || row["Description"] || "").trim();
         const skillsRaw = row["Teknologi_Keahlian"] || row["Skills"] || "";
 
-        if (!role) {
+        if (!role || role.toLowerCase() === "posisi") {
+          if (role.toLowerCase() === "posisi") return;
           errors.push({ row: rowNumStr, reason: "Kolom 'Posisi' tidak boleh kosong." });
           return;
         }
-        if (!company) {
+        if (!company || company.toLowerCase() === "perusahaan") {
+          if (company.toLowerCase() === "perusahaan") return;
           errors.push({ row: rowNumStr, reason: "Kolom 'Perusahaan' tidak boleh kosong." });
           return;
         }
