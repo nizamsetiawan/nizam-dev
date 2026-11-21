@@ -4,6 +4,24 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, LogIn, Eye, EyeOff, ArrowLeft, ShieldCheck } from 'lucide-react';
 import Swal from "sweetalert2";
 
+// Helper hashing satu arah kriptografis (Web Crypto API bawaan browser modern)
+const hashString = async (str) => {
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  } catch (err) {
+    return "";
+  }
+};
+
+// Hash SHA-256 satu arah yang aman (tidak mengekspos plain text email maupun password di GitHub)
+const AUTH_EMAIL_HASH = "b399890da0bb9b79250c0f46ecee37f113da83e3b71324b25986b370c2f7cbab";
+const AUTH_PASS_HASH = "a0e8b2600bbc6fa8130952fce9d0556c2b76938e23048896d3460fa5c9584d09";
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,22 +36,40 @@ export default function Login() {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // Kredensial Administrator diambil dari environment variables (.env / Vercel Environment Variables)
-    // Aman dan tidak dipush ke repositori publik GitHub
+    // 1. Cek Environment Variables (jika diatur di Vercel / .env lokal)
     const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || "").trim().toLowerCase();
     const ADMIN_PASSWORD = (import.meta.env.VITE_ADMIN_PASSWORD || "").trim();
+    const matchesEnv =
+      ADMIN_EMAIL &&
+      ADMIN_PASSWORD &&
+      cleanEmail === ADMIN_EMAIL &&
+      cleanPassword === ADMIN_PASSWORD;
 
-    if (ADMIN_EMAIL && ADMIN_PASSWORD && cleanEmail === ADMIN_EMAIL && cleanPassword === ADMIN_PASSWORD) {
+    // 2. Cek Verifikasi Hash Kriptografis Aman (Aman dari intipan kode publik di GitHub)
+    const inputEmailHash = await hashString(cleanEmail);
+    const inputPassHash = await hashString(cleanPassword);
+    const matchesSecureHash =
+      inputEmailHash === AUTH_EMAIL_HASH &&
+      inputPassHash === AUTH_PASS_HASH;
+
+    // 3. Cek Supabase Auth jika akun admin sudah terdaftar
+    let supabaseAuthSuccess = false;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPassword,
+      });
+      if (!error && data?.session) {
+        supabaseAuthSuccess = true;
+      }
+    } catch (err) {
+      // Lanjutkan jika Supabase Auth belum dibuat
+    }
+
+    if (matchesEnv || matchesSecureHash || supabaseAuthSuccess) {
       // Set sesi admin aktif
       localStorage.setItem("admin_session", "true");
-      localStorage.setItem("admin_email", ADMIN_EMAIL);
-
-      // Coba autentikasi ke Supabase Auth di latar belakang jika tersedia
-      try {
-        await supabase.auth.signInWithPassword({ email: cleanEmail, password: cleanPassword });
-      } catch (err) {
-        // Abaikan jika user belum dibuat di Supabase Auth
-      }
+      localStorage.setItem("admin_email", cleanEmail);
 
       Swal.fire({
         title: "Berhasil Masuk!",
