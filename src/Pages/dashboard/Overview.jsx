@@ -39,10 +39,7 @@ const StatCard = ({ title, count, icon: Icon, to, subtext, cardRadiusClass, acce
 );
 
 export default function Overview() {
-  const { config, updateConfig, getAccentClasses, getCardRadiusClass, getButtonRadiusClass } = usePortfolio();
-  const accent = getAccentClasses();
-  const cardRadiusClass = getCardRadiusClass();
-  const buttonRadiusClass = getButtonRadiusClass();
+  const { config, updateConfig, accent, cardRadiusClass, buttonRadiusClass } = usePortfolio();
   const profile = config?.profile || {};
 
   const [projectCount, setProjectCount] = useState(0);

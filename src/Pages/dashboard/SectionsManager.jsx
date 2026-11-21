@@ -104,14 +104,10 @@ function ItemInfoTooltip({ item, isVisible, type = "section", accent, cardRadius
 }
 
 export default function SectionsManager() {
-  const { config, updateConfig, getAccentClasses, getCardRadiusClass, getButtonRadiusClass } = usePortfolio();
-  const accent = getAccentClasses();
-  const cardRadiusClass = getCardRadiusClass();
-  const buttonRadiusClass = getButtonRadiusClass();
+  const { config, updateConfig, accent, cardRadiusClass, buttonRadiusClass } = usePortfolio();
 
   const [sections, setSections] = useState(config?.sections || {});
   const [elements, setElements] = useState(config?.elements || {});
-  const [isSaving, setIsSaving] = useState(false);
 
   const toggleSection = async (key) => {
     const nextVal = sections[key] === false ? true : false;

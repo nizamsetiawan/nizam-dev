@@ -574,6 +574,11 @@ export const PortfolioProvider = ({ children }) => {
         containerClass: getContainerClass(),
         cardRadiusClass: getCardRadiusClass(),
         buttonRadiusClass: getButtonRadiusClass(),
+        getAccentColor,
+        getAccentClasses: getAccentColor,
+        getCardRadiusClass,
+        getButtonRadiusClass,
+        getContainerClass,
       }}
     >
       {children}
