@@ -20,13 +20,13 @@ import { usePortfolio } from "../../context/PortfolioContext";
 import { supabase } from "../../supabase";
 import { getVisitorLogs } from "../../utils/visitorTracker";
 
-const StatCard = ({ title, count, icon: Icon, to, subtext }) => (
+const StatCard = ({ title, count, icon: Icon, to, subtext, cardRadiusClass, accent }) => (
   <Link
     to={to}
-    className="p-5 rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all shadow-sm group"
+    className={`p-5 ${cardRadiusClass} bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all shadow-sm group`}
   >
     <div className="flex items-center justify-between">
-      <div className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 group-hover:scale-105 transition-transform">
+      <div className={`p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 ${accent.text} group-hover:scale-105 transition-transform`}>
         <Icon className="w-5 h-5" />
       </div>
       <span className="text-2xl font-extrabold text-zinc-900 dark:text-white">{count}</span>
@@ -39,7 +39,10 @@ const StatCard = ({ title, count, icon: Icon, to, subtext }) => (
 );
 
 export default function Overview() {
-  const { config, updateConfig } = usePortfolio();
+  const { config, updateConfig, getAccentClasses, getCardRadiusClass, getButtonRadiusClass } = usePortfolio();
+  const accent = getAccentClasses();
+  const cardRadiusClass = getCardRadiusClass();
+  const buttonRadiusClass = getButtonRadiusClass();
   const profile = config?.profile || {};
 
   const [projectCount, setProjectCount] = useState(0);

@@ -269,54 +269,32 @@ export default function ServicesManager() {
 
   return (
     <div className="space-y-6 max-w-6xl pb-10">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Page Header with Compact Mini Badges */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
             <div className={`p-2 rounded-xl ${accent.bgSubtle} ${accent.text}`}>
               <Layout className="w-5 h-5" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-              Layanan & Penawaran Solusi
+              Layanan &amp; Penawaran Solusi
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-zinc-500 mt-1">
-            Kelola spesialisasi jasa yang Anda sediakan. Perubahan langsung tersimpan otomatis ke sistem.
-          </p>
-        </div>
-      </div>
-
-      {/* Metric Cards Banner */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs`}>
-          <div className="flex items-center justify-between text-zinc-500 text-xs">
-            <span>Total Layanan</span>
-            <Layout className="w-4 h-4 text-zinc-400" />
-          </div>
-          <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
-            {services.length}
+          <p className="text-xs sm:text-sm text-zinc-500 mt-0.5">
+            Kelola spesialisasi jasa yang Anda sediakan. Perubahan langsung tersimpan otomatis.
           </p>
         </div>
 
-        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs`}>
-          <div className="flex items-center justify-between text-zinc-500 text-xs">
-            <span>Pilihan Ikon</span>
-            <Palette className="w-4 h-4 text-zinc-400" />
-          </div>
-          <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
-            {Object.keys(AVAILABLE_ICONS).length}+
-          </p>
-        </div>
-
-        <div className={`p-4 bg-white dark:bg-zinc-900/60 ${cardRadiusClass} border border-zinc-200 dark:border-zinc-800 shadow-2xs col-span-2 sm:col-span-1`}>
-          <div className="flex items-center justify-between text-zinc-500 text-xs">
-            <span>Sistem Penyimpanan</span>
-            <CheckCircle2 className={`w-4 h-4 ${accent.text}`} />
-          </div>
-          <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Auto-Sync Realtime
-          </p>
+        {/* Compact Mini Badges */}
+        <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-600 dark:text-zinc-400">
+            <span>Total:</span>
+            <strong className="text-zinc-900 dark:text-zinc-100 font-semibold">{services.length}</strong>
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[11px] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Auto-Sync
+          </span>
         </div>
       </div>
 
