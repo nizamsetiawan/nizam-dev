@@ -155,7 +155,7 @@ export default function Dashboard() {
         collapsed ? "p-3 flex-col gap-2.5 justify-center" : "p-4 justify-between"
       }`}>
         <Link to="/dashboard/overview" className="flex items-center gap-3 group min-w-0" title="Admin Portal Overview">
-          <div className={`w-9 h-9 shrink-0 ${cardRadiusClass} ${accent.bg} text-white font-extrabold text-xs flex items-center justify-center shadow-md group-hover:scale-105 transition-transform`}>
+          <div className={`w-9 h-9 shrink-0 ${cardRadiusClass} ${accent?.bg || "bg-emerald-600"} text-white font-extrabold text-xs flex items-center justify-center shadow-md group-hover:scale-105 transition-transform`}>
             {profile.initials || "MNS"}
           </div>
           {!collapsed && (
@@ -312,7 +312,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center shrink-0">
-                  <ShieldCheck className={`w-3.5 h-3.5 ${accent.text}`} />
+                  <ShieldCheck className={`w-3.5 h-3.5 ${accent?.text || "text-emerald-500"}`} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-bold text-zinc-900 dark:text-zinc-200 truncate">
@@ -339,7 +339,7 @@ export default function Dashboard() {
               className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center shrink-0 cursor-default"
               title={`Admin Terotentikasi (${adminEmail})`}
             >
-              <ShieldCheck className={`w-4 h-4 ${accent.text}`} />
+              <ShieldCheck className={`w-4 h-4 ${accent?.text || "text-emerald-500"}`} />
             </div>
 
             <button
@@ -407,7 +407,7 @@ export default function Dashboard() {
               </span>
               <ChevronRight className="hidden sm:inline w-3.5 h-3.5 text-zinc-400" />
               <div className="flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100 font-bold truncate">
-                <ActiveIcon className={`w-4 h-4 ${accent.text} shrink-0`} />
+                <ActiveIcon className={`w-4 h-4 ${accent?.text || "text-emerald-500"} shrink-0`} />
                 <span className="truncate">{currentNav.item.label}</span>
               </div>
             </div>

@@ -55,7 +55,7 @@ export default function AdminDataToolbar({
           {onDownloadExcel && (
             <button
               onClick={onDownloadExcel}
-              className={`p-2 ${buttonRadiusClass} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold ${accent.text} hover:opacity-80 transition-all shadow-xs`}
+              className={`p-2 ${buttonRadiusClass} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold ${accent?.text || "text-emerald-500"} hover:opacity-80 transition-all shadow-xs`}
               title="Ekspor Data ke Berkas Excel (.xls)"
               aria-label="Ekspor Excel"
             >
@@ -84,7 +84,7 @@ export default function AdminDataToolbar({
           {onAddNew && (
             <button
               onClick={onAddNew}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-2 ${buttonRadiusClass} ${accent.bg} text-white font-semibold text-xs hover:opacity-90 transition-all shadow-sm active:scale-95`}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 ${buttonRadiusClass} ${accent?.bg || "bg-emerald-600"} text-white font-semibold text-xs hover:opacity-90 transition-all shadow-sm active:scale-95`}
             >
               <Plus className="w-4 h-4" />
               <span>{addLabel}</span>

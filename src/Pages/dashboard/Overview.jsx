@@ -20,23 +20,26 @@ import { usePortfolio } from "../../context/PortfolioContext";
 import { supabase } from "../../supabase";
 import { getVisitorLogs } from "../../utils/visitorTracker";
 
-const StatCard = ({ title, count, icon: Icon, to, subtext, cardRadiusClass, accent }) => (
-  <Link
-    to={to}
-    className={`p-5 ${cardRadiusClass} bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all shadow-sm group`}
-  >
-    <div className="flex items-center justify-between">
-      <div className={`p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 ${accent.text} group-hover:scale-105 transition-transform`}>
-        <Icon className="w-5 h-5" />
+const StatCard = ({ title, count, icon: Icon, to, subtext }) => {
+  const { accent = {}, cardRadiusClass = "rounded-2xl" } = usePortfolio();
+  return (
+    <Link
+      to={to}
+      className={`p-5 ${cardRadiusClass} bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all shadow-sm group`}
+    >
+      <div className="flex items-center justify-between">
+        <div className={`p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 ${accent?.text || "text-emerald-500"} group-hover:scale-105 transition-transform`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <span className="text-2xl font-extrabold text-zinc-900 dark:text-white">{count}</span>
       </div>
-      <span className="text-2xl font-extrabold text-zinc-900 dark:text-white">{count}</span>
-    </div>
-    <div className="mt-4">
-      <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{title}</div>
-      <div className="text-xs text-zinc-500 mt-0.5">{subtext}</div>
-    </div>
-  </Link>
-);
+      <div className="mt-4">
+        <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{title}</div>
+        <div className="text-xs text-zinc-500 mt-0.5">{subtext}</div>
+      </div>
+    </Link>
+  );
+};
 
 export default function Overview() {
   const { config, updateConfig, accent, cardRadiusClass, buttonRadiusClass } = usePortfolio();
@@ -185,36 +188,36 @@ export default function Overview() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Link
             to="/dashboard/profile"
-            className="p-4 rounded-xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+            className={`p-4 ${cardRadiusClass} bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors`}
           >
-            <User className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mb-2" />
+            <User className={`w-4 h-4 ${accent?.text || "text-emerald-500"} mb-2`} />
             <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Profil & Foto</div>
             <div className="text-[11px] text-zinc-500 mt-1">Ubah foto profil, nama, headline</div>
           </Link>
 
           <Link
             to="/dashboard/logs"
-            className="p-4 rounded-xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+            className={`p-4 ${cardRadiusClass} bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors`}
           >
-            <Activity className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mb-2" />
+            <Activity className={`w-4 h-4 ${accent?.text || "text-emerald-500"} mb-2`} />
             <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Log Pengunjung</div>
             <div className="text-[11px] text-zinc-500 mt-1">IP, perangkat, lokasi, riwayat akses</div>
           </Link>
 
           <Link
             to="/dashboard/sections"
-            className="p-4 rounded-xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+            className={`p-4 ${cardRadiusClass} bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors`}
           >
-            <Sliders className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mb-2" />
+            <Sliders className={`w-4 h-4 ${accent?.text || "text-emerald-500"} mb-2`} />
             <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Visibilitas Section</div>
             <div className="text-[11px] text-zinc-500 mt-1">Sembunyikan / munculkan bagian</div>
           </Link>
 
           <Link
             to="/dashboard/appearance"
-            className="p-4 rounded-xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+            className={`p-4 ${cardRadiusClass} bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors`}
           >
-            <Palette className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mb-2" />
+            <Palette className={`w-4 h-4 ${accent?.text || "text-emerald-500"} mb-2`} />
             <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Gaya & Ukuran</div>
             <div className="text-[11px] text-zinc-500 mt-1">Font, lebar kontainer, border radius</div>
           </Link>

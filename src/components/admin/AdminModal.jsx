@@ -51,7 +51,7 @@ export default function AdminModal({
         <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between shrink-0 bg-zinc-50/50 dark:bg-zinc-950/40">
           <div className="flex items-center gap-3 min-w-0">
             {Icon && (
-              <div className={`p-2 rounded-xl ${accent.bgSubtle} ${accent.text} shrink-0`}>
+              <div className={`p-2 rounded-xl ${accent?.bgSubtle || "bg-emerald-500/10"} ${accent?.text || "text-emerald-500"} shrink-0`}>
                 <Icon className="w-5 h-5" />
               </div>
             )}

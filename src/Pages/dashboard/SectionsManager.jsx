@@ -15,7 +15,8 @@ import { usePortfolio } from "../../context/PortfolioContext";
 import Swal from "sweetalert2";
 
 // Tooltip popover with rich visual metadata on hover/click
-function ItemInfoTooltip({ item, isVisible, type = "section", accent, cardRadiusClass }) {
+function ItemInfoTooltip({ item, isVisible, type = "section" }) {
+  const { accent = {}, cardRadiusClass = "rounded-2xl" } = usePortfolio();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -32,7 +33,7 @@ function ItemInfoTooltip({ item, isVisible, type = "section", accent, cardRadius
           setIsOpen((prev) => !prev);
         }}
         className={`p-1 rounded-full text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors ${
-          isOpen ? `${accent.text} bg-zinc-100 dark:bg-zinc-800 ring-2 ring-zinc-300 dark:ring-zinc-700` : ""
+          isOpen ? `${accent?.text || "text-emerald-500"} bg-zinc-100 dark:bg-zinc-800 ring-2 ring-zinc-300 dark:ring-zinc-700` : ""
         }`}
         title="Arahkan kursor atau klik untuk info posisi & komponen di web publik"
         aria-label="Info detail section"
@@ -478,8 +479,6 @@ export default function SectionsManager() {
                       item={sec}
                       isVisible={isVisible}
                       type="section"
-                      accent={accent}
-                      cardRadiusClass={cardRadiusClass}
                     />
                   </div>
                   <p className="text-xs text-zinc-500 leading-relaxed">
@@ -544,8 +543,6 @@ export default function SectionsManager() {
                       item={el}
                       isVisible={isVisible}
                       type="element"
-                      accent={accent}
-                      cardRadiusClass={cardRadiusClass}
                     />
                   </div>
                   <p className="text-xs text-zinc-500 leading-relaxed">
