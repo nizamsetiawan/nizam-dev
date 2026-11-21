@@ -1,20 +1,22 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Home, Compass } from "lucide-react";
+import { usePortfolio } from "../context/PortfolioContext";
 
 export default function NotFoundPage() {
   const navigate = useNavigate();
+  const { accent } = usePortfolio();
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex items-center justify-center px-4 transition-colors">
       <div className="max-w-md w-full text-center space-y-6">
         {/* Subtle Icon Box */}
         <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center mx-auto shadow-sm">
-          <Compass className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+          <Compass className={`w-8 h-8 ${accent.text}`} />
         </div>
 
         <div className="space-y-2">
-          <span className="text-xs font-mono font-bold tracking-widest text-emerald-600 dark:text-emerald-400 uppercase">
+          <span className={`text-xs font-mono font-bold tracking-widest ${accent.text} uppercase`}>
             Error 404
           </span>
           <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">

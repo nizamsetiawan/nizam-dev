@@ -3,6 +3,7 @@ import { supabase } from "../supabase";
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, LogIn, Eye, EyeOff, ArrowLeft, ShieldCheck } from 'lucide-react';
 import Swal from "sweetalert2";
+import { usePortfolio } from "../context/PortfolioContext";
 
 // Helper hashing satu arah kriptografis (Web Crypto API bawaan browser modern)
 const hashString = async (str) => {
@@ -28,6 +29,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { accent } = usePortfolio();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -75,7 +77,7 @@ export default function Login() {
         title: "Berhasil Masuk!",
         text: "Selamat datang kembali di Portal Admin.",
         icon: "success",
-        confirmButtonColor: "#10b981",
+        confirmButtonColor: accent.hex || "#10b981",
         timer: 1600,
         showConfirmButton: false,
       });
@@ -92,7 +94,7 @@ export default function Login() {
       title: "Gagal Masuk",
       text: "Alamat email atau kata sandi yang Anda masukkan salah.",
       icon: "error",
-      confirmButtonColor: "#10b981",
+      confirmButtonColor: accent.hex || "#10b981",
       confirmButtonText: "Coba Lagi",
     });
     setLoading(false);
@@ -111,7 +113,7 @@ export default function Login() {
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Kembali ke Beranda</span>
             </Link>
-            <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+            <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md ${accent.badge} flex items-center gap-1`}>
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Portal Admin</span>
             </span>
@@ -132,7 +134,7 @@ export default function Login() {
               <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                 Alamat Email Admin
               </label>
-              <div className="flex items-center bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden focus-within:border-emerald-500 transition-colors">
+              <div className={`flex items-center bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden focus-within:${accent.border} transition-colors`}>
                 <Mail className="w-4 h-4 text-zinc-400 ml-3.5 shrink-0" />
                 <input
                   type="email"
@@ -149,7 +151,7 @@ export default function Login() {
               <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                 Kata Sandi
               </label>
-              <div className="flex items-center bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden focus-within:border-emerald-500 transition-colors">
+              <div className={`flex items-center bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden focus-within:${accent.border} transition-colors`}>
                 <Lock className="w-4 h-4 text-zinc-400 ml-3.5 shrink-0" />
                 <input
                   type={showPassword ? "text" : "password"}

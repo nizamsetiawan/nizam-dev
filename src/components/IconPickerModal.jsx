@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { usePortfolio } from "../context/PortfolioContext";
 import {
   X,
   Search,
@@ -80,6 +81,7 @@ export const AVAILABLE_ICONS = {
 };
 
 export default function IconPickerModal({ isOpen, onClose, selectedIcon, onSelectIcon }) {
+  const { accent } = usePortfolio();
   const [search, setSearch] = useState("");
 
   if (!isOpen) return null;
@@ -118,7 +120,7 @@ export default function IconPickerModal({ isOpen, onClose, selectedIcon, onSelec
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari nama ikon (cth. Database, Cloud, Github)..."
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none focus:border-emerald-500"
+              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none focus:border-zinc-400 dark:focus:border-zinc-500"
             />
           </div>
         </div>
@@ -138,7 +140,7 @@ export default function IconPickerModal({ isOpen, onClose, selectedIcon, onSelec
                 }}
                 className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all text-center group ${
                   isSelected
-                    ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold ring-2 ring-emerald-500/20"
+                    ? `${accent.bgSubtle} ${accent.border} ${accent.text} font-bold ring-2 ${accent.ring}`
                     : "bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-600 hover:text-black dark:hover:text-white"
                 }`}
                 title={name}

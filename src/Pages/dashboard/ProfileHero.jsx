@@ -1,10 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { usePortfolio } from "../../context/PortfolioContext";
-import { Save, Upload, Image, Trash2, Camera, RefreshCw } from "lucide-react";
+import { Save, Upload, Image, Trash2, Camera, RefreshCw, FileText, X, CheckCircle2, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
+import { supabase } from "../../supabase";
 
 export default function ProfileHero() {
   const { config, updateConfig, accent } = usePortfolio();
+
+  const resumeInputRef = useRef(null);
+  const [resumeUploading, setResumeUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: config?.profile?.name || "",
@@ -86,6 +90,53 @@ export default function ProfileHero() {
       });
     };
     reader.readAsDataURL(file);
+  };
+
+  // ── Upload PDF Resume ke Supabase Storage ──────────────────────────────
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      Swal.fire({ title: "Format Tidak Valid", text: "Hanya berkas PDF yang diizinkan.", icon: "warning" });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      Swal.fire({ title: "Berkas Terlalu Besar", text: "Maksimal ukuran berkas PDF adalah 10MB.", icon: "warning" });
+      return;
+    }
+
+    setResumeUploading(true);
+    try {
+      const path = `resume_${Date.now()}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from("resume-files")
+        .upload(path, file, { upsert: true, contentType: "application/pdf" });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from("resume-files").getPublicUrl(path);
+
+      setFormData((prev) => ({ ...prev, resumeUrl: publicUrl }));
+
+      Swal.fire({
+        title: "Resume Berhasil Diunggah!",
+        text: "URL resume telah diperbarui. Jangan lupa klik 'Simpan Perubahan' di bawah.",
+        icon: "success",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      console.error("Resume upload error:", err);
+      Swal.fire({
+        title: "Gagal Mengunggah",
+        text: err.message || "Terjadi kesalahan saat mengunggah resume. Pastikan bucket 'resume-files' sudah dibuat di Supabase Storage.",
+        icon: "error",
+      });
+    } finally {
+      setResumeUploading(false);
+      if (resumeInputRef.current) resumeInputRef.current.value = "";
+    }
   };
 
   const handleSubmit = (e) => {
@@ -293,16 +344,65 @@ export default function ProfileHero() {
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Tautan Berkas Unduh CV / Resume</label>
-              <input
-                type="text"
-                name="resumeUrl"
-                value={formData.resumeUrl}
-                onChange={handleChange}
-                placeholder="/Resume.pdf atau link Google Drive"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
-              />
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Berkas CV / Resume (PDF)</label>
+
+              {/* Current file indicator */}
+              {formData.resumeUrl ? (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                  <CheckCircle2 className={`w-4 h-4 ${accent.text} shrink-0`} />
+                  <a
+                    href={formData.resumeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 text-xs text-zinc-600 dark:text-zinc-400 hover:underline truncate font-mono"
+                  >
+                    {formData.resumeUrl.split("/").pop()}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setFormData((p) => ({ ...p, resumeUrl: "" }))}
+                    className="p-0.5 text-zinc-400 hover:text-red-500 transition-colors"
+                    title="Hapus URL Resume"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="text-xs text-zinc-500 italic px-1">Belum ada resume yang diunggah.</div>
+              )}
+
+              {/* Upload area */}
+              <div
+                className="flex items-center gap-2 mt-1 p-3 rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500 transition-colors cursor-pointer bg-zinc-50/50 dark:bg-zinc-900/40 group"
+                onClick={() => !resumeUploading && resumeInputRef.current?.click()}
+              >
+                <input
+                  ref={resumeInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={handleResumeUpload}
+                  disabled={resumeUploading}
+                />
+                {resumeUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 text-zinc-400 animate-spin shrink-0" />
+                    <span className="text-xs text-zinc-500">Mengunggah PDF...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-4 h-4 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors shrink-0" />
+                    <div className="flex-1">
+                      <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-200 transition-colors">
+                        {formData.resumeUrl ? "Ganti Berkas PDF" : "Klik untuk Unggah PDF"}
+                      </span>
+                      <span className="text-[11px] text-zinc-400 ml-1.5">Maks. 10MB</span>
+                    </div>
+                    <Upload className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="space-y-1">
@@ -554,7 +654,7 @@ export default function ProfileHero() {
         <div className="flex justify-end">
           <button
             type="submit"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-500 transition-all shadow-md active:scale-95"
+            className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl ${accent.bg} text-white font-semibold text-sm hover:opacity-90 transition-all shadow-md active:scale-95`}
           >
             <Save className="w-4 h-4" />
             <span>Simpan Perubahan Profil & Hero</span>

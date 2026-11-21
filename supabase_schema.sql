@@ -153,12 +153,13 @@ ON public.profiles FOR ALL USING (auth.uid() = id);
 -- ==============================================================================
 -- 7. PENYIMPANAN CLOUD (STORAGE BUCKETS) UNTUK GAMBAR
 -- ==============================================================================
--- Membuat 3 storage bucket publik jika belum ada
+-- Membuat 4 storage bucket publik jika belum ada
 INSERT INTO storage.buckets (id, name, public)
 VALUES 
     ('project-images', 'project-images', true),
     ('certificate-images', 'certificate-images', true),
-    ('profile-images', 'profile-images', true)
+    ('profile-images', 'profile-images', true),
+    ('resume-files', 'resume-files', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Kebijakan akses storage bucket publik (bisa dilihat siapa saja, bisa diunggah siapa saja)
@@ -183,5 +184,15 @@ ON storage.objects FOR SELECT
 USING (bucket_id = 'profile-images');
 
 CREATE POLICY "Public Upload for profile-images" 
+ON storage.objects FOR INSERT 
+WITH CHECK (bucket_id = 'profile-images');
+
+CREATE POLICY "Public Access for resume-files" 
+ON storage.objects FOR SELECT 
+USING (bucket_id = 'resume-files');
+
+CREATE POLICY "Public Upload for resume-files" 
+ON storage.objects FOR INSERT 
+WITH CHECK (bucket_id = 'resume-files');
 ON storage.objects FOR INSERT 
 WITH CHECK (bucket_id = 'profile-images');

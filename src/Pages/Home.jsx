@@ -1,7 +1,8 @@
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Github, Linkedin, Mail, ArrowDown, FileText, Twitter, Instagram } from "lucide-react";
 import { usePortfolio } from "../context/PortfolioContext";
+import ResumeModal from "../components/ResumeModal";
 
 const MetricCard = memo(({ value, label, subtext, cardRadius }) => (
   <div className={`p-4 sm:p-5 ${cardRadius} bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-all shadow-sm`}>
@@ -13,6 +14,7 @@ const MetricCard = memo(({ value, label, subtext, cardRadius }) => (
 
 const Home = () => {
   const { config, accent, containerClass, cardRadiusClass, buttonRadiusClass } = usePortfolio();
+  const [resumeOpen, setResumeOpen] = useState(false);
 
   // If hero section is hidden, don't render it
   if (config?.sections?.hero === false) return null;
@@ -138,15 +140,13 @@ const Home = () => {
 
             {/* Resume Button (Toggleable) */}
             {elements.heroResumeBtn !== false && profile.resumeUrl && (
-              <a
-                href={profile.resumeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => setResumeOpen(true)}
                 className={`inline-flex items-center gap-2 px-5 py-3 ${buttonRadiusClass} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 font-semibold text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all shadow-sm active:scale-95`}
               >
                 <FileText className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
                 <span>Resume / CV</span>
-              </a>
+              </button>
             )}
 
             {/* Contact CTA Button (Toggleable) */}
@@ -239,6 +239,13 @@ const Home = () => {
           )}
         </div>
       </section>
+
+      {/* Resume PDF Preview Modal */}
+      <ResumeModal
+        isOpen={resumeOpen}
+        onClose={() => setResumeOpen(false)}
+        pdfUrl={profile.resumeUrl}
+      />
     </>
   );
 };

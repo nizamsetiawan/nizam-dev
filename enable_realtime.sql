@@ -37,3 +37,23 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.portfolio_comments;
   END IF;
 END $$;
+
+-- 5. Pastikan Storage Bucket 'resume-files' Tersedia untuk Upload Resume PDF
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('resume-files', 'resume-files', true)
+ON CONFLICT (id) DO NOTHING;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Public Access for resume-files'
+  ) THEN
+    CREATE POLICY "Public Access for resume-files" ON storage.objects FOR SELECT USING (bucket_id = 'resume-files');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Public Upload for resume-files'
+  ) THEN
+    CREATE POLICY "Public Upload for resume-files" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'resume-files');
+  END IF;
+END $$;
