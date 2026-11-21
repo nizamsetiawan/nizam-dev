@@ -17,7 +17,7 @@ const ContactPage = () => {
     return null;
   }
 
-  const myEmail = profile.contactEmail || "ekizulfarrachman@gmail.com";
+  const myEmail = profile.contactEmail || "nizamsetiawan15@gmail.com";
 
   const [formData, setFormData] = useState({
     name: "",

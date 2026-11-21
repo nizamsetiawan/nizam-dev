@@ -73,7 +73,7 @@ export default function ProjectDetails() {
           "Integrasi basis data cloud real-time dan otorisasi aman",
         ],
         TechStack: found.TechStack || ["React", "Tailwind CSS", "Vite", "Supabase"],
-        Github: found.Github || "https://github.com/EkiZR",
+        Github: found.Github || "https://github.com/nizamsetiawan",
       });
     }
     setLoading(false);

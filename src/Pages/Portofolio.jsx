@@ -46,8 +46,8 @@ const SAMPLE_PROJECTS = [
     Title: "Modern Portfolio & CMS Dashboard",
     Description: "Portofolio rekayasa web skala produksi dengan sistem komentar real-time, autentikasi Supabase, dan dasbor kontrol CRUD penuh.",
     Img: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=800&auto=format&fit=crop",
-    Link: "https://ekizr.com",
-    Github: "https://github.com/EkiZR/Portofolio_V5",
+    Link: "https://github.com/nizamsetiawan/nizam-dev",
+    Github: "https://github.com/nizamsetiawan/nizam-dev",
     TechStack: ["React", "Tailwind CSS", "Supabase", "Vite", "PostgreSQL"],
   },
   {
@@ -56,7 +56,7 @@ const SAMPLE_PROJECTS = [
     Description: "Dashboard analitik interaktif dengan pemantauan stok real-time, grafik tren penjualan, kontrol akses berbasis peran, dan ekspor laporan.",
     Img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=800&auto=format&fit=crop",
     Link: "#",
-    Github: "https://github.com/EkiZR",
+    Github: "https://github.com/nizamsetiawan",
     TechStack: ["React", "TypeScript", "Tailwind CSS", "Chart.js", "REST API"],
   },
   {
@@ -65,7 +65,7 @@ const SAMPLE_PROJECTS = [
     Description: "Antarmuka toko daring performan tinggi dengan pencarian instan, manajemen keranjang yang aksesibel, dan checkout mobile mulus.",
     Img: "https://images.unsplash.com/photo-1556742049-0a67c5574f73?q=80&w=800&auto=format&fit=crop",
     Link: "#",
-    Github: "https://github.com/EkiZR",
+    Github: "https://github.com/nizamsetiawan",
     TechStack: ["React", "Tailwind CSS", "Supabase", "Stripe API"],
   }
 ];

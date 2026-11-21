@@ -79,11 +79,11 @@ const Navbar = () => {
           className="flex items-center gap-3 group"
         >
           <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 flex items-center justify-center font-bold text-xs text-zinc-900 dark:text-zinc-100 group-hover:border-zinc-400 dark:group-hover:border-zinc-700 transition-colors shadow-sm">
-            {profile.initials || "EZ"}
+            {profile.initials || "NS"}
           </div>
           <div className="hidden sm:flex flex-col">
             <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-black dark:group-hover:text-white transition-colors">
-              {profile.name || "Eki Zulfar Rachman"}
+              {profile.name || "Nizam Setiawan"}
             </span>
             {profile.isAvailable !== false ? (
               <span className={`text-[10px] ${accent.text} flex items-center gap-1.5 font-medium`}>

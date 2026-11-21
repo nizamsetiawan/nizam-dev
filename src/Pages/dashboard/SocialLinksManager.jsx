@@ -97,21 +97,21 @@ export default function SocialLinksManager() {
   const SOCIAL_SAMPLE_ROWS = [
     {
       Nama_Platform: "GitHub",
-      Handle_Username: "@EkiZR",
-      Tautan_URL: "https://github.com/EkiZR",
+      Handle_Username: "@nizamsetiawan",
+      Tautan_URL: "https://github.com/nizamsetiawan",
       Deskripsi: "Repositori kode open-source dan kontribusi publik.",
       Nama_Ikon: "Github",
     },
     {
       Nama_Platform: "LinkedIn",
-      Handle_Username: "Eki Zulfar Rachman",
-      Tautan_URL: "https://linkedin.com/in/ekizr",
+      Handle_Username: "Nizam Setiawan",
+      Tautan_URL: "https://linkedin.com",
       Deskripsi: "Jaringan profesional dan riwayat karir formal.",
       Nama_Ikon: "Linkedin",
     },
     {
       Nama_Platform: "Discord",
-      Handle_Username: "ekizr#1234",
+      Handle_Username: "nizam#1234",
       Tautan_URL: "https://discord.com",
       Deskripsi: "Komunikasi dan kolaborasi komunitas pengembang.",
       Nama_Ikon: "MessageSquare",
@@ -300,7 +300,7 @@ export default function SocialLinksManager() {
                 type="text"
                 value={form.handle}
                 onChange={(e) => setForm({ ...form, handle: e.target.value })}
-                placeholder="cth. @EkiZR"
+                placeholder="cth. @nizamsetiawan"
                 className="w-full px-3 py-2 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:outline-none"
               />
             </div>

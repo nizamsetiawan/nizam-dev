@@ -36,7 +36,7 @@ const Home = () => {
   return (
     <>
       <Helmet>
-        <title>{`${profile.name || "Eki Zulfar Rachman"} — ${profile.role || "Software Engineer"}`}</title>
+        <title>{`${profile.name || "Nizam Setiawan"} — ${profile.role || "Software Engineer"}`}</title>
         <meta
           name="description"
           content={hero.bio || "Personal portfolio showcasing modern web engineering."}
@@ -79,7 +79,7 @@ const Home = () => {
               {hero.headlineSuffix || "dengan arsitektur modern."}
             </h1>
             <p className="text-base sm:text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-3xl leading-relaxed pt-2">
-              Halo, saya <strong className="text-zinc-900 dark:text-zinc-100 font-semibold">{profile.name || "Eki Zulfar Rachman"}</strong> — {hero.bio || "seorang rekayasawan web dengan fokus pada performa dan arsitektur modern."}
+              Halo, saya <strong className="text-zinc-900 dark:text-zinc-100 font-semibold">{profile.name || "Nizam Setiawan"}</strong> — {hero.bio || "seorang rekayasawan web dengan fokus pada performa dan arsitektur modern."}
             </p>
           </div>
 

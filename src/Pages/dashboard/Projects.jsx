@@ -453,8 +453,8 @@ export default function Projects() {
     {
       Judul_Proyek: "Modern Portfolio & CMS",
       Deskripsi: "Portofolio developer dengan panel admin kontrol dinamis dan Supabase backend.",
-      Tautan_Demo: "https://ekizr.com",
-      Tautan_Github: "https://github.com/EkiZR/Portofolio_V5",
+      Tautan_Demo: "https://github.com/nizamsetiawan/nizam-dev",
+      Tautan_Github: "https://github.com/nizamsetiawan/nizam-dev",
       Teknologi_TechStack: "React, Tailwind CSS, Supabase, Vite",
       Gambar_URL: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=800",
       Fitur_Unggulan: "Arsitektur modular, 100% responsif, dark mode, dynamic CMS",
@@ -463,7 +463,7 @@ export default function Projects() {
       Judul_Proyek: "Cloud Inventory System",
       Deskripsi: "Sistem inventaris terdistribusi dengan pemantauan stok real-time.",
       Tautan_Demo: "https://example.com",
-      Tautan_Github: "https://github.com/EkiZR",
+      Tautan_Github: "https://github.com/nizamsetiawan",
       Teknologi_TechStack: "React, TypeScript, PostgreSQL",
       Gambar_URL: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=800",
       Fitur_Unggulan: "Autentikasi role-based, ekspor laporan, dashboard grafik",
@@ -502,7 +502,7 @@ export default function Projects() {
         const title = row["Judul_Proyek"] || row["Title"] || row["judul"] || row["Judul Proyek"];
         const desc = row["Deskripsi"] || row["Description"] || "";
         const link = row["Tautan_Demo"] || row["Link"] || "#";
-        const github = row["Tautan_Github"] || row["Github"] || "https://github.com/EkiZR";
+        const github = row["Tautan_Github"] || row["Github"] || "https://github.com/nizamsetiawan";
         const techRaw = row["Teknologi_TechStack"] || row["TechStack"] || "";
         const img = row["Gambar_URL"] || row["Img"] || "";
         const featuresRaw = row["Fitur_Unggulan"] || row["Features"] || "";
