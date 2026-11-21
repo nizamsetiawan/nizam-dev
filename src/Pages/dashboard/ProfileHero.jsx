@@ -5,7 +5,7 @@ import Swal from "sweetalert2";
 import { supabase } from "../../supabase";
 
 export default function ProfileHero() {
-  const { config, updateConfig, accent } = usePortfolio();
+  const { config, updateConfig, accent, cardRadiusClass, buttonRadiusClass } = usePortfolio();
 
   const resumeInputRef = useRef(null);
   const [resumeUploading, setResumeUploading] = useState(false);
