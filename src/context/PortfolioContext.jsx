@@ -3,8 +3,8 @@ import { supabase } from "../supabase";
 
 const DEFAULT_CONFIG = {
   profile: {
-    name: "Nizam Setiawan",
-    initials: "NS",
+    name: "Muhammad Nizam Setiawan",
+    initials: "MNS",
     role: "Software Engineer & Full-Stack Developer",
     location: "Indonesia (WIB / UTC+7) • Siap Remote & Hybrid",
     availabilityLabel: "Tersedia Segera",

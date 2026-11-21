@@ -18,11 +18,12 @@ export default function Login() {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // Kredensial Administrator
-    const ADMIN_EMAIL = "nizamsetiawan15@gmail.com";
-    const ADMIN_PASSWORD = "setiawannizam15";
+    // Kredensial Administrator diambil dari environment variables (.env / Vercel Environment Variables)
+    // Aman dan tidak dipush ke repositori publik GitHub
+    const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || "").trim().toLowerCase();
+    const ADMIN_PASSWORD = (import.meta.env.VITE_ADMIN_PASSWORD || "").trim();
 
-    if (cleanEmail === ADMIN_EMAIL && cleanPassword === ADMIN_PASSWORD) {
+    if (ADMIN_EMAIL && ADMIN_PASSWORD && cleanEmail === ADMIN_EMAIL && cleanPassword === ADMIN_PASSWORD) {
       // Set sesi admin aktif
       localStorage.setItem("admin_session", "true");
       localStorage.setItem("admin_email", ADMIN_EMAIL);
@@ -36,7 +37,7 @@ export default function Login() {
 
       Swal.fire({
         title: "Berhasil Masuk!",
-        text: "Selamat datang kembali di Portal Admin, Nizam Setiawan.",
+        text: "Selamat datang kembali di Portal Admin.",
         icon: "success",
         confirmButtonColor: "#10b981",
         timer: 1600,
@@ -99,7 +100,7 @@ export default function Login() {
                 <Mail className="w-4 h-4 text-zinc-400 ml-3.5 shrink-0" />
                 <input
                   type="email"
-                  placeholder="nizamsetiawan15@gmail.com"
+                  placeholder="admin@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required

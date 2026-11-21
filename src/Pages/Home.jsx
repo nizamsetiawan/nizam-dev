@@ -33,15 +33,58 @@ const Home = () => {
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
+  const currentOrigin = typeof window !== "undefined" ? window.location.origin : "https://github.com/nizamsetiawan/nizam-dev";
+  const personJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: profile.name || "Muhammad Nizam Setiawan",
+    url: currentOrigin,
+    image: profile.photoUrl
+      ? (profile.photoUrl.startsWith("http") ? profile.photoUrl : `${currentOrigin}${profile.photoUrl}`)
+      : `${currentOrigin}/Photo.jpeg`,
+    jobTitle: profile.role || "Software Engineer & Full-Stack Developer",
+    description: hero.bio || "Portofolio resmi Muhammad Nizam Setiawan, Software Engineer & Full-Stack Developer.",
+    email: profile.contactEmail || undefined,
+    sameAs: [
+      socials.github,
+      socials.linkedin,
+      socials.twitter,
+      socials.instagram,
+    ].filter(Boolean),
+  };
+
   return (
     <>
       <Helmet>
-        <title>{`${profile.name || "Nizam Setiawan"} — ${profile.role || "Software Engineer"}`}</title>
+        <title>{`${profile.name || "Muhammad Nizam Setiawan"} | ${profile.role || "Software Engineer & Full-Stack Developer"}`}</title>
         <meta
           name="description"
-          content={hero.bio || "Personal portfolio showcasing modern web engineering."}
+          content={hero.bio || `Portofolio resmi ${profile.name || "Muhammad Nizam Setiawan"}, Software Engineer & Full-Stack Developer.`}
         />
+        <meta
+          name="keywords"
+          content={`muhammad nizam setiawan, ${profile.name || "Muhammad Nizam Setiawan"}, Software Engineer, Full-Stack Developer, Portofolio, Web Developer`}
+        />
+        <meta name="author" content={profile.name || "Muhammad Nizam Setiawan"} />
+        <meta property="og:title" content={`${profile.name || "Muhammad Nizam Setiawan"} | ${profile.role || "Software Engineer & Full-Stack Developer"}`} />
+        <meta property="og:description" content={hero.bio || `Portofolio resmi ${profile.name || "Muhammad Nizam Setiawan"}`} />
+        <meta property="og:image" content={profile.photoUrl || "/Photo.jpeg"} />
+        <meta name="twitter:title" content={`${profile.name || "Muhammad Nizam Setiawan"} | ${profile.role || "Software Engineer & Full-Stack Developer"}`} />
+        <meta name="twitter:description" content={hero.bio || `Portofolio resmi ${profile.name || "Muhammad Nizam Setiawan"}`} />
+        <meta name="twitter:image" content={profile.photoUrl || "/Photo.jpeg"} />
+
+        {/* Dynamic Structured Data (JSON-LD) langsung dari Supabase Database */}
+        <script type="application/ld+json">
+          {JSON.stringify(personJsonLd)}
+        </script>
       </Helmet>
+
+      {/* Konten teks penting untuk SEO & Screen Reader — Dinamis dari Supabase Database */}
+      <header className="sr-only">
+        <h1>{profile.name || "Muhammad Nizam Setiawan"}</h1>
+        <h2>{profile.role || "Software Engineer & Full-Stack Developer"}</h2>
+        <p>{hero.bio || "Portofolio resmi Muhammad Nizam Setiawan, Software Engineer & Full-Stack Developer. Berfokus pada pembangunan aplikasi web modern, performa tinggi, dan solusi arsitektur kode bersih."}</p>
+      </header>
 
       <section
         id="Home"
