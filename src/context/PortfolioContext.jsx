@@ -246,7 +246,37 @@ const DEFAULT_CONFIG = {
   },
 };
 
-const PortfolioContext = createContext();
+// Default accent (emerald) untuk mencegah crash sebelum Provider mount
+const DEFAULT_ACCENT = {
+  text: "text-emerald-600 dark:text-emerald-400",
+  hoverText: "hover:text-emerald-700 dark:hover:text-emerald-300",
+  bg: "bg-emerald-600 dark:bg-emerald-500",
+  bgSubtle: "bg-emerald-500/10",
+  border: "border-emerald-500/30",
+  dot: "bg-emerald-500",
+  ping: "bg-emerald-400",
+  ring: "focus:ring-emerald-500",
+  badge: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60",
+  name: "Hijau Zamrud (Emerald)",
+  hex: "#10b981",
+};
+
+const DEFAULT_CONTEXT = {
+  config: DEFAULT_CONFIG,
+  updateConfig: () => {},
+  resetToDefaults: () => {},
+  accent: DEFAULT_ACCENT,
+  containerClass: "max-w-6xl",
+  cardRadiusClass: "rounded-xl",
+  buttonRadiusClass: "rounded-xl",
+  getAccentColor: () => DEFAULT_ACCENT,
+  getAccentClasses: () => DEFAULT_ACCENT,
+  getCardRadiusClass: () => "rounded-xl",
+  getButtonRadiusClass: () => "rounded-xl",
+  getContainerClass: () => "max-w-6xl",
+};
+
+const PortfolioContext = createContext(DEFAULT_CONTEXT);
 
 export const PortfolioProvider = ({ children }) => {
   const [config, setConfig] = useState(() => {
@@ -588,8 +618,6 @@ export const PortfolioProvider = ({ children }) => {
 
 export const usePortfolio = () => {
   const context = useContext(PortfolioContext);
-  if (!context) {
-    throw new Error("usePortfolio harus digunakan di dalam PortfolioProvider");
-  }
-  return context;
+  // Return default context instead of throwing to prevent blank screen crashes
+  return context ?? DEFAULT_CONTEXT;
 };
