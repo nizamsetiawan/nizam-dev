@@ -35,15 +35,39 @@ const BORDER_RADII = [
 
 const BG_STYLES = [
   {
+    id: "aurora",
+    label: "Spektrum Aurora (Rekomendasi)",
+    desc: "Cahaya spektrum aurora mengalir lembut, bernuansa hidup & futuristik.",
+    preview: "aurora",
+  },
+  {
+    id: "spectrum",
+    label: "Gelombang Spektrum Audio",
+    desc: "Sinyal frekuensi audio dan harmonic wave digital berdenyut halus.",
+    preview: "spectrum",
+  },
+  {
+    id: "cybergrid",
+    label: "Cyber Grid Horizon",
+    desc: "Grid digital modern dengan garis horizon bercahaya dan efek scanline.",
+    preview: "cybergrid",
+  },
+  {
+    id: "particles",
+    label: "Partikel Kosmik (Stars)",
+    desc: "Bintang dan titik kosmik bercahaya mengapung di angkasa.",
+    preview: "particles",
+  },
+  {
     id: "dots",
     label: "Titik-titik (Dots)",
-    desc: "Pola titik halus seperti kertas desain. Bawaan default.",
+    desc: "Pola titik halus seperti kertas desain minimalis modern.",
     preview: "radial",
   },
   {
     id: "grid",
     label: "Kotak Grid (Grid)",
-    desc: "Garis grid teknis, nuansa spreadsheet digital.",
+    desc: "Garis grid teknis blueprint digital.",
     preview: "grid",
   },
   {
@@ -57,12 +81,6 @@ const BG_STYLES = [
     label: "Gelombang (Wave)",
     desc: "Animasi gelombang SVG mengalir lembut di latar.",
     preview: "wave",
-  },
-  {
-    id: "particles",
-    label: "Partikel (Floating Dots)",
-    desc: "16 titik mengapung naik-turun seperti bintang.",
-    preview: "particles",
   },
   {
     id: "none",
@@ -407,6 +425,26 @@ export default function Appearance() {
               >
                 {/* Mini pattern preview */}
                 <div className="w-full h-10 mb-3 rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 relative">
+                  {item.preview === "aurora" && (
+                    <div className="absolute inset-0 overflow-hidden flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/50 blur-md animate-pulse" />
+                      <div className="w-10 h-10 rounded-full bg-indigo-500/50 blur-md -ml-3" />
+                      <div className="w-8 h-8 rounded-full bg-cyan-500/50 blur-md -ml-2" />
+                    </div>
+                  )}
+                  {item.preview === "spectrum" && (
+                    <div className="absolute inset-0 flex items-center justify-center gap-1 opacity-80">
+                      {[30, 60, 95, 50, 80, 45, 75].map((h, idx) => (
+                        <div key={idx} className="w-1 rounded-full bg-emerald-500" style={{ height: `${h * 0.3}px` }} />
+                      ))}
+                    </div>
+                  )}
+                  {item.preview === "cybergrid" && (
+                    <div className="absolute inset-0 opacity-70">
+                      <div className="absolute inset-0" style={{ backgroundImage: "linear-gradient(#10b981 1px, transparent 1px), linear-gradient(to right, #10b981 1px, transparent 1px)", backgroundSize: "12px 12px", opacity: 0.35 }} />
+                      <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-emerald-400 shadow-sm" />
+                    </div>
+                  )}
                   {item.preview === "radial" && (
                     <div className="absolute inset-0 opacity-50" style={{ backgroundImage: "radial-gradient(#71717a 1px, transparent 1px)", backgroundSize: "10px 10px" }} />
                   )}

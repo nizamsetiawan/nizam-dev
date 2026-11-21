@@ -237,7 +237,7 @@ const DEFAULT_CONFIG = {
     containerWidth: "6xl",        // 5xl | 6xl | 7xl | full
     borderRadius: "xl",           // none | md | xl | 2xl
     layoutDensity: "comfortable", // compact | comfortable | spacious
-    bgStyle: "dots",              // none | dots | grid | cross | wave | particles
+    bgStyle: "aurora",            // aurora | spectrum | cybergrid | dots | grid | cross | wave | particles | none
     bgIntensity: "medium",        // subtle | medium | vivid
     skillTagStyle: "colorful",    // mono | colorful | outline
   },
